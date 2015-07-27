@@ -217,6 +217,7 @@ class BashModule(BaseModule):
             self.on_balance_op(realm)
         
     def MoveToNextRoom(self, realm):
+        realm.send('queue eqbal put gold in pack')
         if self.current_area in self.pathing:
             if len(self.pathing[self.current_area]) > self.move_index+1:
                 next_room = self.pathing[self.current_area][self.move_index+1]
@@ -241,6 +242,11 @@ class BashModule(BaseModule):
     def move_next(self,match,realm):
         self.send_to_mud=False
         self.MoveToNextRoom(realm)
+        
+    @binding_trigger('^You are afflicted with an unknown affliction.$')
+    def unknown_affliction(self, match, realm):
+        if self.on:
+            realm.send('pb')
 class MainModule(BashModule):
     pass
 

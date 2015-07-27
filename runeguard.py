@@ -73,7 +73,8 @@ class Runeguard(BaseModule):
     @property
     def aliases(self):
         return [self.kestrel_summon, self.bulwark, self.set_weapon,self.ii,self.pain_totem,
-                self.transfix_totem,self.dsl,self.reave, self.raze, self.reave_or_raze]
+                self.transfix_totem,self.dsl,self.reave, self.raze, self.reave_or_raze, self.impale, self.disembowel,
+                self.cleave, self.sunder]
     @property
     def triggers(self):
         return[self.match_item, self.end_of_matching, self.rune_back]
@@ -81,9 +82,35 @@ class Runeguard(BaseModule):
     def gmcp_events(self):
         return[self.on_char_vitals]
     
-    
+    @binding_alias('^imp$')
+    def impale(self, match, realm):
+        realm.send_to_mud=False
+        target=realm.root.state['target']
+        realm.send('queue eqbal impale %s'%target)
+        realm.root.state['last_command_type']='attack'
+    @binding_alias('^cle$')
+    def cleave(self, match, realm):
+        realm.send_to_mud=False
+        target=realm.root.state['target']
+        realm.send('queue eqbal cleave %s'%target)
+        realm.root.state['last_command_type']='attack'
+    @binding_alias('^sund$') 
+    def sunder(self, match, realm):
+        realm.send_to_mud=False
+        target=realm.root.state['target']
+        realm.send('queue eqbal sunder %s'%target)
+        realm.root.state['last_command_type']='attack'
+        
+    @binding_alias('^dis$')
+    def disembowel(self, match, realm):
+        realm.send_to_mud=False
+        target=realm.root.state['target']
+        realm.send('queue eqbal disembowel %s'%target)
+        realm.root.state['last_command_type']='attack'
+        
     @binding_alias('^rrv$')
     def reave_or_raze(self, match,realm):
+        realm.send_to_mud=False
         target=realm.root.state['target']
         if target in self.shield_razer.raze_data and not self.shield_razer.raze_data[target].all_stripped():
             self.raze(match,realm)
