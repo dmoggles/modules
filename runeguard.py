@@ -12,36 +12,10 @@ from pymudclient.tagged_ml_parser import taggedml
 from pymudclient.triggers import binding_trigger
 from pymudclient.gmcp_events import binding_gmcp_event
 from twisted.conch.test.test_userauth import Realm
+from FlareTracker import FlareTracker, FlareObject
+from RingAnnouncer import RingAnnouncer
+from ToxinTracker import FlareKeyedToxinTracker
 
-class FlareTracker:
-    KENA='kena'
-    FEHU='fehu'
-    PITHAKHAN='pithakhan'
-    INGUZ='inguz'
-    WUNJO='wunjo'
-    SOWULU='sowulu'
-    HUGALAZ='hugalaz'
-    NAUTHIZ='nauthiz'
-    MANNAZ='mannaz'
-    SLEIZAK='sleizak'
-    NAIRAT='nairat'
-    EIHWAZ='eihwaz'
-    LOSHRE='loshre'
-    RUNES=[KENA,FEHU,PITHAKHAN,INGUZ,WUNJO,SOWULU,HUGALAZ,NAUTHIZ,MANNAZ,SLEIZAK,NAIRAT,EIHWAZ,LOSHRE]
-    def __init__(self):
-        self.runes={r:1 for r in FlareTracker.RUNES}
-        self.priority_list=[]
-    def __getitem__(self,key):
-        return self.runes[key]
-    def __setitem__(self,key,value):
-        self.runes[key]=value
-    
-    def getNextRune(self):
-        for r in self.priority_list:
-            if self.runes[r]==1:
-                return r
-        return ''
-        
 class Runeguard(BaseModule):
     '''
     classdocs
@@ -53,23 +27,23 @@ class Runeguard(BaseModule):
         Constructor
         '''
         BaseModule.__init__(self,realm)
+        self.communicator=RingAnnouncer(realm)
         self.shield_razer=ShieldRez(realm)
-        
+        self.flaretracker = FlareTracker(realm, self.communicator)
+        self.toxin_tracker = FlareKeyedToxinTracker()
         self.items={}
         self.item_setting_file=realm.module_settings_dir+'/'+realm.factory.name+'_runeguard_items.pickle'
         if os.path.exists(self.item_setting_file):
             f=open(self.item_setting_file,'r')
             self.items=pickle.load(f)
-        self.flaretracker=FlareTracker()
-        self.flaretracker.priority_list=[FlareTracker.SOWULU,FlareTracker.PITHAKHAN]
         self.lw='0'
         self.rw='0'
         self.weapon_match_status=''
-        
+        self.active_weapon='battleaxe'
         
     @property
     def modules(self):
-        return[self.shield_razer]
+        return[self.shield_razer, self.flaretracker, self.communicator]
     @property
     def aliases(self):
         return [self.kestrel_summon, self.bulwark, self.set_weapon,self.ii,self.pain_totem,
@@ -77,7 +51,7 @@ class Runeguard(BaseModule):
                 self.cleave, self.sunder]
     @property
     def triggers(self):
-        return[self.match_item, self.end_of_matching, self.rune_back]
+        return[self.match_item, self.end_of_matching]
     @property
     def gmcp_events(self):
         return[self.on_char_vitals]
@@ -86,7 +60,10 @@ class Runeguard(BaseModule):
     def impale(self, match, realm):
         realm.send_to_mud=False
         target=realm.root.state['target']
-        realm.send('queue eqbal impale %s'%target)
+        if not self.rw == 'broadsword':
+            realm.send('queue eqbal quickdraw broadsword|impale %s'%target)
+        else:  
+            realm.send('queue eqbal impale %s'%target)
         realm.root.state['last_command_type']='attack'
     @binding_alias('^cle$')
     def cleave(self, match, realm):
@@ -108,11 +85,11 @@ class Runeguard(BaseModule):
         realm.send('queue eqbal disembowel %s'%target)
         realm.root.state['last_command_type']='attack'
         
-    @binding_alias('^rrv$')
+    @binding_alias('^xx')
     def reave_or_raze(self, match,realm):
         realm.send_to_mud=False
         target=realm.root.state['target']
-        if target in self.shield_razer.raze_data and not self.shield_razer.raze_data[target].all_stripped():
+        if target in self.shield_razer.raze_data and not self.shield_razer.raze_data[target].all_stripped:
             self.raze(match,realm)
         else:
             self.reave(match, realm)
@@ -143,18 +120,18 @@ class Runeguard(BaseModule):
     
     def make_combo(self, attack, weapon, realm):    
         target=realm.root.state['target']
-        flare=self.flaretracker.getNextRune()
-        toxin1,toxin2=('strychnine','strychnine')
+        flare=self.flaretracker.getNextRune(target)
+        toxin1,toxin2=self.toxin_tracker.getNextToxinSet(flare)
         command=''
-        if flare==FlareTracker.SOWULU or flare==FlareTracker.PITHAKHAN:
+        if flare==FlareObject.SOWULU or flare==FlareObject.PITHAKHAN or flare==FlareObject.NAUTHIZ:
             if self.lw != 'tablet':
-                command=command+'unwield left|wield %s left|'%self.items['tablet']
+                command=command+'quickdraw %s left|'%self.items['tablet']
         else:
             if self.lw != 'shield':
-                command=command+'unwield left|wield %s left|'%self.items['shield']
+                command=command+'quickdraw %s left|'%self.items['shield']
                 
         if self.rw != weapon:
-            command=command+'unwield right|wield %s right|'%self.items[weapon]
+            command=command+'quickdraw %s right|'%self.items[weapon]
         command=command+'grip|order kestrel attack %s|'%target
         if attack=='reave':
             command=command+'tgs|lns|'
@@ -165,14 +142,14 @@ class Runeguard(BaseModule):
     @binding_alias('^spt$')
     def pain_totem(self, match, realm):
         target=realm.root.state['target']
-        realm.send('queue eqbal unwield left|unwield right|wield %s|stand totem for %s'%(self.items['paintotem'],target))
+        realm.send('queue eqbal quickdraw %s|stand totem for %s'%(self.items['paintotem'],target))
         realm.root.state['last_command_type']='totem'
         realm.send_to_mud=False
         
     @binding_alias('^stt$')
     def transfix_totem(self, match, realm):
         target=realm.root.state['target']
-        realm.send('queue eqbal unwield left|unwield right|wield %s|stand totem for %s'%(self.items['transfixtotem'],target))
+        realm.send('queue eqbal quickdraw %s|stand totem for %s'%(self.items['transfixtotem'],target))
         realm.root.state['last_command_type']='totem'
         realm.send_to_mud=False
                 
@@ -186,7 +163,7 @@ class Runeguard(BaseModule):
         realm.send_to_mud=False
         command=''
         if not self.lw=='shield':
-            command='unwield left|wield %s|grip|'%self.items['shield']
+            command='quickdraw %s|grip|'%self.items['shield']
         realm.send('queue eqbal %sbulwark'%command)
         realm.root.state['last_command_type']='defense'
     @binding_alias('^set_weapon (\w+) ([0-9]+)$')
@@ -210,16 +187,6 @@ class Runeguard(BaseModule):
     
     #triggers
     
-    @binding_trigger('^The residual effects of the (\w+) rune around (\w+) fade\.$')
-    def rune_back(self, match, realm):
-        rune=match.group(1)
-        my_target=match.group(2)
-        target=realm.root.state['target']
-        realm.display_line=False
-        if my_target==target:
-            self.flaretracker[rune.lower()]=0
-            realm.write(taggedml('<green*>RUNE UP:  <blue*:green>%s',rune))
-            realm.write(taggedml('<green*>RUNE UP:  <blue*:green>%s',rune))
             
     @binding_trigger('^Number of matching objects:')
     def end_of_matching(self,match,realm):
@@ -239,17 +206,18 @@ class Runeguard(BaseModule):
     
     @binding_gmcp_event('Char.Vitals')
     def on_char_vitals(self, gmcp, realm):
-        lw=gmcp['leftwield']
-        rw=gmcp['rightwield']
-        
-        self.lw=''
-        self.rw=''
-        
-        for k in self.items:
-            if self.items[k]==lw:
-                self.lw=k
-            if self.items[k]==rw:
-                self.rw=k
+        if 'leftwield' in gmcp:
+            lw=gmcp['leftwield']
+            self.lw=''
+            for k in self.items:
+                if self.items[k]==lw:
+                    self.lw=k
+        if 'rightwield' in gmcp:
+            rw=gmcp['rightwield']
+            self.rw=''
+            for k in self.items:
+                if self.items[k]==rw:
+                    self.rw=k
         
 class MainModule(Runeguard):
     pass

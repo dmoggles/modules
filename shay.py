@@ -21,7 +21,7 @@ from pymudclient.library.imperian.imperian import ImperianModule
 
 
 class MainModule(HTMLLoggingModule):
-        name = 'Ailish'
+        name = 'Shay'
         host = 'imperian.com'
         port = 23
         
@@ -37,7 +37,7 @@ class MainModule(HTMLLoggingModule):
          
         @property
         def modules(self):
-            return[Runeguard,ImperianModule]
+            return[ImperianModule]
             
         @property
         def gmcp_handler(self):

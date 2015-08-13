@@ -9,6 +9,7 @@ from pymudclient.triggers import binding_trigger
 from pymudclient.gmcp_events import binding_gmcp_event
 import pickle
 import os
+from pymudclient.tagged_ml_parser import taggedml
 #from twisted.internet import reactor
 
 class BashModule(BaseModule):
@@ -40,7 +41,9 @@ class BashModule(BaseModule):
         if os.path.isfile(realm.module_settings_dir+'/basher_pathing.pickle'):
             f=open(realm.module_settings_dir+'/basher_pathing.pickle','r')
             self.pathing=pickle.load(f)
-    
+        self.pb_balance=True
+        self.unknown_affs=0
+        
     @property
     def aliases(self):
         return [self.bash,self.target,self.autobash, self.scan_room,
@@ -50,7 +53,8 @@ class BashModule(BaseModule):
     
     @property
     def triggers(self):
-        return [self.on_balance, self.health_gain, self.stop_autowalking]
+        return [self.on_balance, self.health_gain, self.stop_autowalking, self.unknown_affliction,
+                self.pb_back, self.pb_do_pb, self.pb_no_affs,self.pb_not_back]
     
     @property
     def gmcp_events(self):
@@ -243,10 +247,43 @@ class BashModule(BaseModule):
         self.send_to_mud=False
         self.MoveToNextRoom(realm)
         
-    @binding_trigger('^You are afflicted with an unknown affliction.$')
+    @binding_trigger('^You are confused as to the effects of the toxin')
     def unknown_affliction(self, match, realm):
         if self.on:
-            realm.send('pb')
+            print("unknown_affliction")
+            self.unknown_affs+=1
+            if self.pb_balance:
+                realm.send('pb')
+            realm.write(taggedml('<red>Unknown afflictions: <red*>%d'%self.unknown_affs))
+    @binding_trigger('^You have regained the ability to purge your body')
+    def pb_back(self, match, realm):
+        if self.on:
+            print("pb_back")
+            self.pb_balance=True
+            if self.unknown_affs>0:
+                realm.send('pb')
+                realm.write(taggedml('<red>Unknown afflictions: <red*>%d'%self.unknown_affs))
+            
+    @binding_trigger('^You concentrate on purging your body of foreign toxins')
+    def pb_do_pb(self, match, realm):
+        if self.on:
+            print("pb_do_pb")
+            self.pb_balance=False
+            if self.unknown_affs>0:
+                self.unknown_affs-=1
+                realm.write(taggedml('<red>Unknown afflictions: <red*>%d'%self.unknown_affs))        
+    @binding_trigger('^You find your body already clear of harmful substance/.$')
+    def pb_no_affs(self, match, realm):
+        if self.on:
+            print("pb_no_affs")
+            self.unknown_affs=0
+        
+    @binding_trigger('^You have not regained the ability to purge your body of toxins/.$')
+    def pb_not_back(self, match, realm):
+        if self.on:
+            print("pb_not_back")
+            self.pb_balance=False
+        
 class MainModule(BashModule):
     pass
 
