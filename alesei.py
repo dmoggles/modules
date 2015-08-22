@@ -3,20 +3,18 @@ Created on Jul 15, 2015
 
 @author: Dmitry
 '''
-from pymudclient.modules import BaseModule, load_file
-from pymudclient.aliases import binding_alias
-from pymudclient.triggers import binding_trigger
+from pymudclient.modules import BaseModule
+
 from pymudclient.net.gmcp import ImperianGmcpHandler
 
-from BashModule import BashModule
-from sys import modules
-from pymudclient.metaline import Metaline, RunLengthList
-from pymudclient.colours import fg_code, bg_code, BLACK, RED, CYAN
-from pymudclient.tagged_ml_parser import taggedml
+
 from pymudclient.library.html import HTMLLoggingModule
-from runeguard import Runeguard
-from pymudclient.gmcp_events import binding_gmcp_event
 from pymudclient.library.imperian.imperian import ImperianModule
+from pymudclient.library.imperian.channel_handler import ChannelHandler
+from necromancy import Necromancy
+from defenses import Defenses
+from self_afflictions import SelfAfflictions
+from diabolist import Diabolist
 
 
 
@@ -28,6 +26,7 @@ class MainModule(HTMLLoggingModule):
         def __init__(self, realm):
             BaseModule.__init__(self,realm)
             self.map_mode=False
+            self.necromancy=Necromancy(realm)
             
             
         
@@ -37,7 +36,8 @@ class MainModule(HTMLLoggingModule):
          
         @property
         def modules(self):
-            return[ImperianModule]
+            return[ImperianModule,ChannelHandler, self.necromancy, Defenses,
+                   SelfAfflictions, Diabolist]
             
         @property
         def gmcp_handler(self):

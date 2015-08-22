@@ -212,7 +212,7 @@ class BashModule(BaseModule):
             for t2 in obj_list:
                 if t1 in t2['name']:
                     self.room_bash_list.append(t2['id'])
-                    if t2['id'] in self.agg_mobs:
+                    if t2['id'] in self.agg_mobs or self.current_area.lower() == 'the vorrak mines':
                         aggs+=1
         if aggs>2:
             self.MoveToNextRoom(realm)
