@@ -27,6 +27,7 @@ class Necromancy(EarlyInitialisingModule):
                       'You gag a bit as you inhale your own stink\.',
                       'Your essence slowly drains away as you strain to maintain your aura of death\.'])
     def gags(self, match, realm):
-        realm.display_group = False
+        if len(realm.block)==3:
+            realm.display_group = False
         
     

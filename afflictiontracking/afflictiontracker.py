@@ -12,19 +12,24 @@ import time
 TREEABLE = 1<<0
 PURGEABLE = 1<<1
 FOCUSABLE = 1<<2
-
-
-
-
 HERB = 1<<3
 PIPE = 1<<4
 SALVE = 1<<5
-
 PASSIVE= 1<<6
+ELIXIR=-10
+
+
+
+
+
 
 TREE_BALANCE=15
 PURGE_BALANCE=15
 FOCUS_BALANCE=4
+
+HERB_BALANCE=2
+SALVE_BALANCE=3
+PIPE_BALANCE=3
 
 skill_to_aff={}
 toxin_to_aff={}
@@ -81,7 +86,7 @@ def normalize_aff(aff):
     return aff.replace(' ','_')
 
 def get_cure(cure):
-    for c in ['wormwood','mandrake','kelp','orphine','nightshade','galingale','maidenhair', 'ginger']:
+    for c in ['wormwood','mandrake','kelp','orphine','nightshade','galingale','maidenhair', 'ginger', 'juniper']:
         if c in cure:
             return c
     if cure == 'thick, musty smoke':
@@ -93,7 +98,7 @@ def get_cure(cure):
     return ''
 
 class Affliction:
-    def __init__(self, name, afftype, cures, priority, confidence_threshold, third_party_cure, extra_cures=0,):
+    def __init__(self, name, afftype, cures, priority, confidence_threshold, third_party_cure, cooldown=0,extra_cures=0):
         '''
         @param name: affliction name
         @param afftype: affliction type (herb, pipe or salve)
@@ -112,7 +117,10 @@ class Affliction:
         self.default_priority=priority
         self.confidence_threshold=confidence_threshold
         self.third_party_cure=third_party_cure
+        self.cooldown=cooldown
+        self.last_given=0
         self.mark=False
+        
         
     def is_it(self, what):
         return (self.extra_cures & what)
@@ -120,16 +128,24 @@ class Affliction:
     def cured_by(self, what):
         return (self.afftype & what)
     
+    @property 
+    def on_for(self):
+        return time.time() - self.last_given if self.last_given > 0 else 0
     @property
     def on(self):
+
         return self.confidence >= self.confidence_threshold
-    
+
+    @property
+    def usable(self):
+        return (not self.on) and (self.last_given+self.cooldown < time.time())
     @on.setter
     def on(self, value):
         if value == False:
             self.confidence = 0
         else:
             self.confidence = 1
+            
     
     @property
     def ready(self):
@@ -140,7 +156,7 @@ class Affliction:
     
     
 class Tracker:
-    def __init__(self, who, realm):
+    def __init__(self, who, realm, communicator=None, remove_ambiguous=False):
         self.name=who
         self.affs = new_aff_dict()
         self.realm=realm
@@ -152,10 +168,26 @@ class Tracker:
         self.last_purge=0
         self.last_tree=0
         self.last_toadstool=0
-        
+        self.last_peace=0
+        self.presumed_afflictions=0
+        self.remove_ambiguous = remove_ambiguous
         self.tentative_cures=[]
         self.tentative_cure_messages=[]
-        
+        self.communicator=communicator
+        self.deaf = True
+    
+    @property 
+    def tlock(self):
+        return self.affs['anorexia'].on and self.affs['slickness'].on and self.affs['asthma'].on and self.affs['impatience'].on and self.affs['hemotoxin'].on and (self.affs['numbness'].on or self.affs['paralysis'].on)
+    
+    
+    def reset(self):
+        for a in self.affs.values():
+            a.on=False
+            #if self.realm.gui:
+            #    self.realm.gui.set_aff(a.name, False)
+        self.presumed_afflictions=0
+            
     def __getitem__(self, value):
         adict = AfflictionDictionaries()
         value = adict.t2a(value)
@@ -163,21 +195,71 @@ class Tracker:
         if not value in self.affs:
             return None
         return self.affs[value]
-        
+    
+    def apply_priorities(self, priorities):
+        adict = AfflictionDictionaries()
+        for p in priorities:
+            a=adict.t2a(p[0])
+            a=adict.s2a(a)
+            self.affs[a].priority=p[1]
+            
+    def print_priorities(self):
+        affs=sorted(self.affs.values(), key=lambda aff:aff.priority)
+        for a in affs:
+            self.realm.cwrite('<black:yellow>%s: <red*:black>%d'%(a.name,a.priority))
+               
     def output(self):
-        s ='<aff %s>: %s'
+        pass
+        #if not self.realm.gui:
+        #    return self.text_output()
+        #else:
+        #    self.realm.gui.update_cooldowns()
+        #    for v in self.affs.values():
+        #        self.realm.gui.set_aff(v.name, v.on)
+                
+    def text_output(self):
+        s ='<aff %s(PA: %d)(E: %d, S: %d, P:%d, F: %d, B: %d, T: %d)>: %s'
         afflictions=[k for k,v in self.affs.items() if v.on]
-        return s%(self.name,','.join(afflictions))
+        now=time.time()
+        since_eat=round(now-self.last_eat) if self.last_eat != 0 else 0
+        since_salve=round(now-self.last_salve)  if self.last_salve != 0 else 0
+        since_pipe=round(now-self.last_smoke)  if self.last_smoke != 0 else 0
+        since_focus=round(now-self.last_focus) if self.last_focus != 0 else 0
+        since_purge=round(now-self.last_purge) if self.last_purge != 0 else 0
+        since_tree=round(now-self.last_tree) if self.last_tree != 0 else 0
+        return s%(self.name,
+                  self.presumed_afflictions,
+                  since_eat,
+                  since_salve,
+                  since_pipe,
+                  since_focus,
+                  since_purge,
+                  since_tree,
+                  str(','.join(afflictions)))
 
-    def add_aff(self, aff):
+    def add_aff(self, aff, announce=True):
         aff=normalize_aff(aff)
+        
+        adict = AfflictionDictionaries()
+        aff = adict.t2a(aff)
+        aff = adict.s2a(aff)
         if not aff in self.affs:
             self.realm.write(self.name + " received unknown aff " + aff + ". Needs adding to new_aff_dict()")
             return
+        if aff == 'sensitivity' and self.deaf:
+            self.deaf=False
+            return
+        
         old_conf = self.affs[aff].on
         self.affs[aff].on=True
+        self.affs[aff].last_given=time.time()
+        self.presumed_afflictions+=1
         if old_conf!=True:
-            print(self.output()) 
+            if self.communicator and announce:
+                self.communicator.send_aff(aff,self.name)
+            #if self.realm.gui:
+            #    if self.realm.get_state('target')==self.name:
+            #        self.realm.gui.set_aff(aff, True)
         
 
     def _remove_aff(self, cure, cure_type, cure_msg):
@@ -186,6 +268,11 @@ class Tracker:
             for a in temp_affs:
                 if re.match(a.third_party_cure, cure_msg):
                     a.on=False
+                    #if self.realm.gui:
+                    #    self.realm.gui.set_aff(a.name, False)
+                    self.realm.cwrite('[[<purple*:green>%s]: <purple*:orange>%s]'%(self.name,a.name))
+        
+                    self.presumed_afflictions-=1
         
         else:
             if cure:
@@ -197,13 +284,34 @@ class Tracker:
                 temp_affs=[v for v in self.affs.values() if v.third_party_cure == '' and 
                            v.cured_by(cure_type) and
                            v.on]
+            if len(temp_affs)==0:
+                temp_affs=[v for v in self.affs.values() if v.third_party_cure =='' and
+                           v.cured_by(cure_type) and 
+                           v.on]
+            #if len(temp_affs)==0:
+            #    temp_affs=[v for v in self.affs.values() if v.third_party_cure=='' and
+            #               v.on]
+            
+            
+            if len(temp_affs)>1 and not self.remove_ambiguous:
+                self.presumed_afflictions-=1
+                self.realm.cwrite('[[<purple*:green>%s]: <purple*:orange>AMBIGUOUS]'%self.name)
+        
+                return
+            
             temp_affs = sorted(temp_affs, key=lambda aff:aff.priority)
             if len(temp_affs)>0:
                 aff_to_remove=temp_affs[0]
                 old_confidence = aff_to_remove.on
                 aff_to_remove.on = False
-                if (old_confidence==True):
-                    print(self.output())
+                self.realm.cwrite('[[<purple*:green>%s]: <purple*:orange>%s]'%(self.name,aff_to_remove.name))
+        
+                #if self.realm.gui:
+                #    self.realm.gui.set_aff(aff_to_remove.name, False)
+                    
+                self.presumed_afflictions-=1
+                #if (old_confidence==True):
+                #    print(self.output())
                     
     def _remove_aff_extra_cure(self, cure_type, cure_msg):
         if not cure_msg == '':
@@ -211,25 +319,56 @@ class Tracker:
             for a in temp_affs:
                 if re.match(a.third_party_cure, cure_msg):
                     a.on=False
+                    #if self.realm.gui:
+                    #    self.realm.gui.set_aff(a.name, False)
+                    self.realm.cwrite('[[<purple*:green>%s]: <purple*:orange>%s]'%(self.name,a.name))
+        
+                    self.presumed_afflictions-=1
         
         else:
             temp_affs = [v for v in self.affs.values() if v.third_party_cure == '' and 
                 v.is_it(cure_type) and 
                 v.on]
+            #if len(temp_affs)==0:
+            #    temp_affs=[v for v in self.affs.values() if v.third_party_cure=='' and
+            #               v.on]
             temp_affs = sorted(temp_affs, key=lambda aff:aff.priority)
+            if len(temp_affs)>1 and not self.remove_ambiguous:
+                self.presumed_afflictions-=1
+                self.realm.cwrite('[[<purple*:green>%s]: <purple*:orange>AMBIGUOUS]'%self.name)
+        
+                return
             if len(temp_affs)>0:
                 aff_to_remove=temp_affs[0]
                 old_confidence = aff_to_remove.on
                 aff_to_remove.on = False
-                if (old_confidence==True):
-                    print(self.output())
+                self.realm.cwrite('[[<purple*:green>%s]: <purple*:orange>%s]'%(self.name,aff_to_remove.name))
+        
+                #if self.realm.gui:
+                #    self.realm.gui.set_aff(aff_to_remove.name, False)
+                self.presumed_afflictions-=1
+                #if (old_confidence==True):
+                #    print(self.output())
+
+                    
+    def cure_specific_aff(self, affliction):
+        #print 'removing specific affliction: %s'%affliction
+        if affliction in self.affs:
+            self.presumed_afflictions-=1
+            self.affs[affliction].on=False
+            #if self.realm.gui:
+            #    self.realm.gui.set_aff(affliction, False)
 
     def eat_cure(self, cure, cure_msg):
         cure=get_cure(cure)
         self.affs['anorexia'].on=False
         self.last_eat = time.time()
-        self._remove_aff(cure, HERB, cure_msg)
-            
+        if cure == 'juniper':
+            self.deaf = True
+        else:
+            if not cure == '':
+                self._remove_aff(cure, HERB, cure_msg)
+                
     
     def pipe_cure(self, cure, cure_msg):
         cure=get_cure(cure)
@@ -268,18 +407,44 @@ class Tracker:
             for a in temp_affs:
                 if re.match(a.third_party_cure, cure_msg):
                     a.on = False
+                    #if self.realm.gui:
+                    #    self.realm.gui.set_aff(a.name, False)
+                    self.realm.cwrite('[[<purple*:green>%s]: <purple*:orange>%s]'%(self.name,a.name))
         
         else:
             temp_affs = [v for v in self.affs.values() if v.third_party_cure == '' and 
                 v.on]
+            if len(temp_affs)>1 and not self.remove_ambiguous:
+                self.realm.cwrite('[[<purple*:green>%s]: <purple*:orange>AMBIGUOUS]'%self.name)
             temp_affs = sorted(temp_affs, key=lambda aff:aff.priority)
             if len(temp_affs)>0:
                 aff_to_remove=temp_affs[0]
                 old_confidence = aff_to_remove.on
                 aff_to_remove.on = False
-                if (old_confidence==True):
-                    print(self.output())
-         
+                self.realm.cwrite('[[<purple*:green>%s]: <purple*:orange>%s]'%(self.name,aff_to_remove.name))
+        
+                self.presumed_afflictions-=1
+                #if (old_confidence==True):
+                #    print(self.output())
+    
+    def time_to_next_purge(self):
+        return max(0,self.last_purge+PURGE_BALANCE-time.time())
+    
+    def time_to_next_tree(self):
+        return max(0,self.last_tree + TREE_BALANCE - time.time())
+    
+    @property
+    def tlocked(self):
+        return self.affs['anorexia'].on and self.affs['asthma'].on and self.affs['slickness'].on and self.affs['impatience'].on and (self.affs['hemotoxin'].on or self.time_to_next_purge() > 10) and (self.affs['numbness'].on or self.affs['paralysis'].on or self.time_to_next_tree() > 10)
+    
+    @property
+    def pboc(self):
+        return self.time_to_next_purge()>0
+    
+    @property
+    def peacecd(self):
+        return self.last_peace + 5 - time.time()
+    
     @property
     def next_focus(self):
         return time.time()-FOCUS_BALANCE
@@ -295,12 +460,28 @@ class Tracker:
     def add_tentative_cure(self, cure_type, cure):
         self.tentative_cures.append((cure_type, cure))
         self.tentative_cure_messages.append('')
+        target = self.realm.get_state('target')
+        #if self.realm.gui and self.name==target:
+        #    if cure_type==FOCUSABLE:
+        #        self.realm.gui.reset_cooldown('focus')
+        #    if cure_type==TREEABLE:
+        #        self.realm.gui.reset_cooldown('tree')
+        #    if cure_type==PURGEABLE:
+        #        self.realm.gui.reset_cooldown('purge')
+        #    if cure_type==HERB:
+        #        self.realm.gui.reset_cooldown('herb')
+        #    if cure_type==PIPE:
+        #        self.realm.gui.reset_cooldown('pipe')
+        #    if cure_type==SALVE:
+        #        self.realm.gui.reset_cooldown('salve')
+        
     
     def add_tentative_cure_message(self, cure_message):
         self.tentative_cure_messages[len(self.tentative_cure_messages)-1]=cure_message
     
     def process(self):
         for indx, cure in enumerate(self.tentative_cures):
+            print ('doing cure %s'%str(cure))
             msg=self.tentative_cure_messages[indx]
             if cure[0]==FOCUSABLE:
                 self.focus_cure(msg)
@@ -321,6 +502,9 @@ class Tracker:
         self.tentative_cures=[]
         for a in self.affs.values():
             a.mark=False
+        if self.presumed_afflictions==0:
+            for a in self.affs.values():
+                a.on=False
             
 def new_aff_dict():
     afffile = os.path.join(os.path.expanduser('~'), 'muddata',
@@ -351,9 +535,12 @@ def new_aff_dict():
                 extra_cures=extra_cures|PURGEABLE
             if row['tree']:
                 extra_cures=extra_cures|TREEABLE
-                
+            if row['cooldown']:
+                cooldown=float(row['cooldown'])
+            else:
+                cooldown =0
             affs[row['affliction']]=Affliction(row['affliction'],cure_types, cures, int(row['priority']),
-                                         1.0,row['cure_msg'],extra_cures)
+                                         1.0,row['cure_msg'],cooldown, extra_cures)
             
             
             adict = AfflictionDictionaries()
@@ -381,7 +568,7 @@ if __name__=='__main__':
     adict = AfflictionDictionaries()
     print(adict.t2a('xeroderma'))
     t.add_aff('asthma')
-    t.add_tentative_cure(HERB, 'maidenhair root')
+    t.add_tentative_cure(HERB, 'toadstool root')
     t.add_tentative_cure(FOCUSABLE,None)
     t.add_tentative_cure_message("test's expression no longer looks so vacant.")
     t.add_tentative_cure(PIPE, 'light, bluish mist')

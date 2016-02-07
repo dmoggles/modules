@@ -1,20 +1,31 @@
-from pymudclient.modules import BaseModule
+from pymudclient.modules import EarlyInitialisingModule
 from pymudclient.triggers import binding_trigger
+from pymudclient.aliases import binding_alias
+
 from afflictiontracker import Tracker,TREEABLE,FOCUSABLE,PURGEABLE,HERB,PIPE,SALVE,PASSIVE
 
 
-class TrackerModule(BaseModule):
-    def __init__(self, realm):
-        BaseModule.__init__(self,realm)
-        
+class TrackerModule(EarlyInitialisingModule):
+    def __init__(self, realm,communicator, remove_ambiguous=False):
         self.trackers={}
+        self.realm = realm
+        self.stored_priorities=[]
+        self.communicator=communicator
+        self.remove_ambiguous= remove_ambiguous
+        self.communicator.aff_tracker=self
         
     def tracker(self, name):
         name=name.lower()
         if name not in self.trackers:
-            self.trackers[name]=Tracker(name, self.manager)
+            self.trackers[name]=Tracker(name, self.manager, self.communicator, self.remove_ambiguous)
+            self.trackers[name].apply_priorities(self.stored_priorities)
             
         return self.trackers[name]
+    
+    def apply_priorities(self, priorities):
+        self.stored_priorities=priorities
+        for t in self.trackers.values():
+            t.apply_priorities(priorities)
     
     @property
     def triggers(self):
@@ -25,8 +36,35 @@ class TrackerModule(BaseModule):
                self.uses_focus,
                self.purges_blood,
                self.touches_tree,
-               self.third_parth_message,
-               self.passive_cure]
+               self.third_party_message,
+               self.passive_cure,
+               self.on_prompt,
+               self.peace_off,
+               self.asthma_off,
+               self.toxin_hit,
+               self.haemophilia]
+        
+    @property
+    def aliases(self):
+        return [self.reset,
+                self.print_priorities]
+    
+    @binding_alias('^aff priorities$')
+    def print_priorities(self,match,realm):
+        realm.send_to_mud=False
+        self.tracker('me').print_priorities()
+    
+    @binding_trigger(["^(\w+)'s blood starts flowing more freely\.",
+                      "^You shred (\w+)'s skin viciously with a shining longsword, causing a nasty infection\.$"])
+    def haemophilia(self, match, realm):
+        person=match.group(1).lower()
+        self.tracker(person).add_aff('haemophilia')
+    
+    @binding_trigger(['^Your (\w+) toxin has affected (\w+)\.$'])
+    def toxin_hit(self, match, realm):
+        toxin = match.group(1)
+        person = match.group(2).lower()
+        self.tracker(person).add_aff(toxin)
         
     @binding_trigger(['^(\w+) empties out .* into (?:his|her) mouth\.$',
                       '^(\w+) takes a drink from .*\.$'])
@@ -65,7 +103,19 @@ class TrackerModule(BaseModule):
     def uses_focus(self, match, realm):
         name=match.group(1)
         self.tracker(name).add_tentative_cure(FOCUSABLE, None)
+    
+    
+    @binding_trigger("^(\w+)'s looks much less fit after the attack\.$")
+    def asthma_off(self, match, realm):
+        name=match.group(1)
+        self.tracker(name).cure_specific_aff('asthma')
         
+    @binding_trigger(['^(\w+) glares angrily, driving off the pacifying attempt\.$',
+                      "^(\w+)'s eyes flash with rage\.$"])
+    def peace_off(self,match,realm):
+        #print('removing peace')
+        name=match.group(1)
+        self.tracker(name).cure_specific_aff('peace')
     
     @binding_trigger(["^(\w+)'s colour returns to \w+ face\.$",
                       "^(\w+)'s skin color returns to normal and \w+ sweating subsides\.$",
@@ -92,11 +142,24 @@ class TrackerModule(BaseModule):
         self.tracker(name).add_tentative_cure(PASSIVE,None)
     
     
-    def on_prompt(self, realm):
+    
+    @binding_alias('^aff reset$')
+    def reset(self, match,realm):
+        realm.send_to_mud=False
         target=realm.root.state['target']
+        realm.cwrite('<black:white>Resetting afflictions on %s'%target)
+        self.tracker(target).reset()
+    
+    @binding_trigger('^H:(\d+) M:(\d+)')
+    def on_prompt(self, match, realm):
+        target=realm.root.get_state('target')
         
-        for t in self.trackers:
+        for t in self.trackers.values():
             t.process()
+            #t.output()
         if target!=None and target !='':
-            realm.cwrite('<orange>%s'%self.tracker(target).output())    
+            if realm.root.gui:
+                realm.root.gui.update_cooldowns()
+            else:
+                realm.cwrite('<orange>%s'%self.tracker(target).output())    
         

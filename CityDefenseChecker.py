@@ -34,6 +34,7 @@ class CityDefenseChecker(BaseModule):
         self.cur_mono=0
         self.all_monos=[]
         self.rooms_checked=[]
+        self.item_checked = 'a hazeward stone'
         
     @property
     def gmcp_events(self):
@@ -86,6 +87,8 @@ class CityDefenseChecker(BaseModule):
         elif com=='write_mono':
             if self.state=='processing_done':
                 self.write_mono_report() 
+        elif com=='set_item':
+            self.item_checked=arg
     
     @binding_gmcp_event('Room.Info')
     def on_room_info(self, gmcp_data, realm):
@@ -139,7 +142,8 @@ class CityDefenseChecker(BaseModule):
                 self.room_monoliths=[]
                 self.state='room_done'
                 for item in items:
-                    if item['name']=='a monolith sigil':
+                    print('comparing %s to %s'%(item['name'],self.item_checked))
+                    if item['name']==self.item_checked:
                         self.room_monoliths.append(item['id'])
                         self.state='do_monolith'
             self.manager.send('ql')
@@ -219,7 +223,7 @@ class CityDefenseChecker(BaseModule):
         
     def write_mono_report(self):
         self.manager.send('~~~~~Monolith Inspection Report~~~~')
-        self.manager.send('Performed by Ailish Eraudan')
+        self.manager.send('Performed by Alesei Lynne')
         self.manager.send('Date: %s'%self.get_date())
         self.manager.send('Rooms Checked: %s'%len(self.rooms_checked))
         self.manager.send(' ')    

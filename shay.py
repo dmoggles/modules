@@ -17,6 +17,7 @@ from pymudclient.library.html import HTMLLoggingModule
 from runeguard import Runeguard
 from pymudclient.gmcp_events import binding_gmcp_event
 from pymudclient.library.imperian.imperian import ImperianModule
+from pymudclient.library.accessibility import ScreenreaderProtocol
 
 
 
@@ -37,7 +38,7 @@ class MainModule(HTMLLoggingModule):
          
         @property
         def modules(self):
-            return[ImperianModule]
+            return[ImperianModule,ScreenreaderProtocol]
             
         @property
         def gmcp_handler(self):
