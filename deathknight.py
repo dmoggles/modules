@@ -28,7 +28,7 @@ class Deathknight(EarlyInitialisingModule):
     '''
 
 
-    def __init__(self, realm, communicator, draining_shred_weapon, agony_shred_weapon, lacerate_weapon, saber_weapon):
+    def __init__(self, realm, communicator, draining_shred_weapon, infused_weapon, lacerate_weapon, saber_weapon):
         self.aff_tracker = TrackerModule(realm, communicator, True)
         self.communicator =communicator
         self.aff_tracker.apply_priorities([('haemophilia',1)])
@@ -54,8 +54,7 @@ class Deathknight(EarlyInitialisingModule):
         self.agony_shred_weaponmastery = LongswordShredWeaponmastery(self.shield_track, 
                                                                       realm,
                                                                       self.aff_tracker,
-                                                                      agony_shred_weapon,
-                                                                      self.enhancement_tracker)
+                                                                      infused_weapon,                                                                      self.enhancement_tracker)
         self.lacerate_weaponmastery = LongswordLacerateWeaponmastery(self.shield_track, 
                                                    realm,
                                                    self.aff_tracker,

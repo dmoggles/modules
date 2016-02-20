@@ -119,8 +119,14 @@ class EvileyeHealth(EvileyeCombo):
         
         queue=[]
         if self.breacher.get_warded(target):
+            self.realm.debug('hes warded')
             queue.append('breach')
         if self.daegger.ready and (self.shield[target].shield or self.shield[target].aura):
+            self.realm.debug('hes shielded or has aura')
+            if self.shield[target].shield:
+                self.realm.debug('shielded')
+            elif self.shield[target].aura:
+                self.realm.debug('rebounding')
             queue.append('breach')
         if not tracker['anorexia'].on and (tracker['slickness'].on and tracker['impatience'].on and (tracker['hemotoxin'].on or tracker.pboc)):
             queue.append('anorexia')
@@ -129,18 +135,28 @@ class EvileyeHealth(EvileyeCombo):
         if not tracker['epilepsy'].on and (tracker['asthma'].on and (tracker['hemotoxin'].on or tracker.pboc) and (tracker['impatience'].on)):
             queue.append('epilepsy') 
         
+        
+        if not tracker['impatience'].on:
+            queue.append('impatience')
+        
         if not tracker['numbness'].on and not tracker['paralysis'].on:
             queue.append('numbness')
+        
+        if not tracker['peace'].on and not tracker.peacecd>0:
+            queue.append('peace')
+        
         if not tracker['asthma'].on:
             queue.append('asthma')
         if not tracker['nausea'].on:
             queue.append('vomiting')
         
+        if not tracker['sensitivity'].on:
+            queue.append('sensitivity')
+        
+        
         if not tracker['clumsiness'].on:
             queue.append('clumsy')
        
-        if not tracker['impatience'].on:
-            queue.append('impatience')
         
         if not tracker['addiction'].on:
             queue.append('addiction')
@@ -148,8 +164,6 @@ class EvileyeHealth(EvileyeCombo):
         if not tracker['masochism'].on:
             queue.append('masochism')
        
-        if not tracker['peace'].on and not tracker.peacecd>0:
-            queue.append('peace')
         if not tracker['stupidity'].on:
             queue.append('stupid')
         if not tracker['ignorance'].on:
@@ -161,8 +175,6 @@ class EvileyeHealth(EvileyeCombo):
         
         if not tracker['dizziness'].on:
             queue.append('dizzy')
-        if not tracker['sensitivity'].on:
-            queue.append('sensitivity')
         if not tracker['vertigo'].on:
             queue.append('vertigo')
         if not tracker['paranoia'].on:
@@ -269,21 +281,23 @@ class Breacher(EarlyInitialisingModule):
     def hit_curseward(self, match, realm):
         realm.display_line=False
         
-        target = realm.root.state['target']
+        target = realm.root.get_state('target')
         self.set_warded(match.group(1), True)
+        realm.root.fireEvent('cursewardEvent',match.group(1).lower(),1)
+        
         if match.group(1).lower() == target.lower():
             realm.cwrite('<red*:yellow>Curseward is UP on %s!'%target)
-            if realm.root.gui:
-                realm.root.gui.set_shield('curseward',True)
+            
             
     @binding_trigger(['^(?:His|Her) curseward has failed!$',
                       '^There is nothing left to breach\.$'])
     def strip_curseward(self, match, realm):
-        target = realm.root.state['target']
+        target = realm.root.get_state('target')
         realm.display_line=False
         self.set_warded(target, False)
-        if realm.root.gui:
-                realm.root.gui.set_shield('curseward',False)
+        #if realm.root.gui:
+        #        realm.root.gui.set_shield('curseward',False)
+        realm.root.fireEvent('cursewardEvent',target,0)
         realm.cwrite('<green*:yellow>Curseward is DOWN on %s!'%target)
         
     
@@ -291,5 +305,4 @@ class Breacher(EarlyInitialisingModule):
     def strip_curseward_self(self, match, realm):
         target='me'
         self.set_warded(target, False)
-        if realm.root.gui:
-                realm.root.gui.set_shield('curseward',False)
+        

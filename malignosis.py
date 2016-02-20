@@ -173,7 +173,7 @@ class Daegger(EarlyInitialisingModule):
         self.ready=True
         self.realm=realm
         self.afftracker=afftracker
-        self.priority=AfflictionPriority('daegger',realm.factory.name,realm)
+        self.priority=AfflictionPriority('daegger',realm.name,realm)
         self.priority.load_priorities('default')
         self.toxin=''
         
@@ -203,6 +203,9 @@ class Daegger(EarlyInitialisingModule):
         if not tracker['slickness'].on and (tracker['asthma'].on and tracker['anorexia'].on and 
                                             (tracker['hemotoxin'].on or tracker.pboc)):
             self.toxin='iodine'
+            return self.toxin
+        if not tracker['metrazol'].on:
+            self.toxin='metrazol'
             return self.toxin
         if not tracker['sunallergy'].on:
             self.toxin = 'xeroderma'
@@ -240,9 +243,7 @@ class Daegger(EarlyInitialisingModule):
         if not tracker['sunallergy'].on:
             self.toxin='xeroderma'
             return self.toxin
-        if not tracker['metrazol'].on:
-            self.toxin='metrazol'
-            return self.toxin
+        
         self.toxin='benzene'
         return self.toxin
             
@@ -284,7 +285,7 @@ class Daegger(EarlyInitialisingModule):
         realm.display_line=False
         realm.cwrite('<black:cyan>---- DAEGGER HUNT ----')
         self.ready=False
-        self.timed_ready=realm.root.set_timer(12, self._daegger_ready, realm)
+        self.timed_ready=realm.root.set_timer(12, self._daegger_ready)
         
     @binding_trigger('^The daegger is again ready to hunt its prey\.$')
     def daegger_ready(self,match,realm):

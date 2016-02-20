@@ -43,10 +43,10 @@ class SelfAfflictions(BaseModule):
     
             
     def output_to_gui(self, realm):
-        cur_channels = realm.active_channels
-        realm.active_channels=['afflictions']
-        realm.cwrite(self.output())
-        realm.active_channels=cur_channels
+        #cur_channels = realm.active_channels
+        #realm.active_channels=['afflictions']
+        realm.cwrite(self.output(), channels=['afflictions'])
+        #realm.active_channels=cur_channels
      
     def output(self):
         s = '||'.join(["%s: %s"%(k[:3],','.join(v)) for k,v in self.by_cure_table.items() if len(v)> 0])

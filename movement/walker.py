@@ -71,7 +71,8 @@ class Walker(EarlyInitialisingModule):
         realm.cwrite('<green*>WALKER INFO:<white> Set traversal path.  Length: %d'%len(p))
         self.set_path(p[1:])
     
-    @binding_trigger("^There's water ahead of you\. You'll have to swim to make it through\.$")
+    @binding_trigger(["^There's water ahead of you\. You'll have to swim to make it through\.$",
+                      "^You'll have to SWIM .* to make it through the water in that direction\.$"])
     def water(self, match, realm):
         if self.makes_a_move:
             realm.send('swim %s'%self.move)
@@ -94,6 +95,9 @@ class Walker(EarlyInitialisingModule):
         realm.send_to_mud=False
         if not self.status == 'onpath':
             realm.cwrite('<red*>WALKER ERROR:<white> Walker not on path')
+        elif len(self.path) == 0:
+            realm.cwrite('<red*>WALKER:<white>Finished Path')
+            self.status = 'offpath'
         else:
             if self.delayed_move and self.delayed_move.active():
                 self.delayed_move.cancel()

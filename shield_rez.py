@@ -31,6 +31,14 @@ class ShieldStatus:
     def all_stripped(self):
         return not (self.shield or self.aura or self.barrier)
      
+    
+    def prompt_status(self):
+        shield_line = '<red*>ON' if self.shield else '<green*>OFF'
+        rebound_line = '<red*>ON' if self.aura else '<green*>OFF'
+        barrier_line = '<red*>ON' if self.barrier else '<green*>OFF'
+        line = '<yellow*>S:%(shields)s <yellow*>R:%(rebound)s <yellow*>B:%(barrier)s'%{'shields':shield_line,
+                                                                                       'rebound':rebound_line,
+                                                                                       'barrier':barrier_line}
     @property
     def metaLine(self):
         line="Shield|Aura|Barrier"
@@ -59,6 +67,8 @@ class ShieldRez(EarlyInitialisingModule):
         self.raze_data = {}
         self.on_shields_up = on_shields_up
         self.on_shields_down = on_shields_down
+        self.realm = realm
+        self.realm.registerEventHandler('setTargetEvent', self.fireAllEvents)
     
     def __getitem__(self, item):
         '''
@@ -68,12 +78,18 @@ class ShieldRez(EarlyInitialisingModule):
             self.raze_data[item]=ShieldStatus(aura=True)
         return self.raze_data[item]
     
+    def fireAllEvents(self, target):
+        self.realm.fireEvent('reboundingEvent', target,1 if self.__getitem__(target).aura else 0)
+        self.realm.fireEvent('shieldEvent', target,1 if self.__getitem__(target).shield else 0)
+        self.realm.fireEvent('barrierEvent', target,1 if self.__getitem__(target).barrier else 0)
+    
+    
     @binding_trigger([r'^You suddenly perceive the vague outline of an aura of rebounding around (\w+)\.$',
                       r'^You suddenly perceive the vague outline of an aura of rebounding around (\w+)$',
                       r'^The attack rebounds off (\w+)\'s rebounding aura\!$',
                       '^A demonic daegger hurls itself at (\w+), striking his aura of rebounding\.'])
     def rebounding_on(self, match, realm):
-        print(match.group(0))
+        
         realm.display_line=False
         my_target = match.group(1).lower()
         if not my_target in self.raze_data: 
@@ -81,31 +97,30 @@ class ShieldRez(EarlyInitialisingModule):
         else:
             self.raze_data[my_target].aura=True
         realm.root.fireEvent('reboundingEvent',my_target,1)
-        if realm.root.state['target'].lower()==my_target:
+        if realm.root.get_state('target').lower()==my_target:
             new_line = 'REBOUNDING ON, REBOUNDING ON'
             realm.write(simpleml(new_line, fg_code(YELLOW,True),bg_code(RED)))
             if self.on_shields_up!=None:
                 self.on_shields_up(realm,self.raze_data[my_target])
             
             
-    @binding_trigger(r'^(?:His|Her) aura of rebounding is breached\.$')
+    @binding_trigger([r'^(?:His|Her) aura of rebounding is breached\.$',
+                      r'^There is nothing left to breach\.$'])
     def no_target_rebound_off(self, match,realm):
         realm.display_line=False
-        my_target=realm.root.state['target'].lower()
+        my_target=realm.root.get_state('target').lower()
         if not my_target in self.raze_data:
             self.raze_data[my_target]=ShieldStatus(aura=False)
         else:
             self.raze_data[my_target].aura=False
         realm.write(simpleml('REBOUNDING OFF, REBOUNDING OFF',fg_code(YELLOW,True),bg_code(RED)))
-        if realm.root.gui:
-                realm.root.gui.set_shield('rebound',False)
         realm.root.fireEvent('reboundingEvent',my_target,0)
             
             
     @binding_trigger(r'^The attack rebounds back onto you!$')
     def no_target_rebound_on(self, match, realm):
         realm.display_line=False
-        my_target=realm.root.state['target'].lower()
+        my_target=realm.root.get_state('target').lower()
         if not my_target in self.raze_data:
             self.raze_data[my_target]=ShieldStatus(aura=True)
         else:
@@ -131,7 +146,7 @@ class ShieldRez(EarlyInitialisingModule):
             self.raze_data[my_target].aura=False
         realm.root.fireEvent('reboundingEvent',my_target,0)
             
-        if realm.root.state['target'].lower()==my_target:
+        if realm.root.get_state('target').lower()==my_target:
             realm.cwrite('--- REBOUNDING IS ---- %s'%self.raze_data[my_target].aura)
             realm.write(simpleml('REBOUNDING DOWN, REBOUNDING DOWN',fg_code(YELLOW,True),bg_code(GREEN)))
             if self.raze_data[my_target].all_stripped:
@@ -156,7 +171,7 @@ class ShieldRez(EarlyInitialisingModule):
         else:
             self.raze_data[my_target].shield=True
         realm.root.fireEvent('shieldEvent',my_target,1)
-        if realm.root.state['target'].lower()==my_target:
+        if realm.root.get_state('target').lower()==my_target:
             new_line = 'SHIELD ON, SHIELD ON'
             realm.write(simpleml(new_line, fg_code(YELLOW,True),bg_code(RED)))
             if self.on_shields_up!=None:
@@ -180,7 +195,7 @@ class ShieldRez(EarlyInitialisingModule):
             self.raze_data[my_target].shield=False
         realm.root.fireEvent('shieldEvent',my_target,0)
             
-        if realm.root.state['target'].lower()==my_target:
+        if realm.root.get_state('target').lower()==my_target:
            
             realm.write(simpleml('SHIELD DOWN, SHIELD DOWN',fg_code(YELLOW,True),bg_code(GREEN)))
             if self.raze_data[my_target].all_stripped:
@@ -200,9 +215,7 @@ class ShieldRez(EarlyInitialisingModule):
         else:
             self.raze_data[my_target].barrier=True
         realm.root.fireEvent('barrierEvent',my_target,1)
-        if realm.root.state['target'].lower()==my_target:
-            if realm.root.gui:
-                realm.root.gui.set_shield('prism',True)
+        if realm.root.get_state('target').lower()==my_target:
             new_line = 'BARRIER ON, BARRIER ON'
             realm.write(simpleml(new_line, fg_code(YELLOW,True),bg_code(RED)))
             if self.on_shields_up!=None:
@@ -218,9 +231,7 @@ class ShieldRez(EarlyInitialisingModule):
             self.raze_data[my_target].barrier=False
         realm.root.fireEvent('barrierEvent',my_target,0)
         
-        if realm.root.state['target'].lower()==my_target:
-            if realm.root.gui:
-                realm.root.gui.set_shield('prism',False)
+        if realm.root.get_state('target').lower()==my_target:
             realm.write(simpleml('BARRIER DOWN, BARRIER DOWN',fg_code(YELLOW,True),bg_code(GREEN)))
             if self.raze_data[my_target].all_stripped:
                 realm.write(simpleml('ALL SHIELDS DOWN, ALL SHIELDS DOWN',fg_code(YELLOW,True),bg_code(GREEN)))
@@ -231,7 +242,7 @@ class ShieldRez(EarlyInitialisingModule):
     def rebounding_soon(self, match, realm):
         realm.display_line = False
         my_target=match.group(1).lower()
-        if my_target==realm.root.state['target'].lower():
+        if my_target==realm.root.get_state('target').lower():
             realm.write(simpleml('REBOUNDING SOON, REBOUNDING SOON!', fg_code(YELLOW,True),bg_code(RED)))
             def delayed_aura(realm):
                 realm.write("DONE!")
@@ -251,7 +262,7 @@ class ShieldRez(EarlyInitialisingModule):
     @binding_alias('^rzst$')
     def raze_status(self, match, realm):
         realm.send_to_mud=False
-        target=realm.root.state['target']
+        target=realm.root.get_state('target')
         if target in self.raze_data:
             realm.write(self.raze_data[target].metaLine)    
     @property

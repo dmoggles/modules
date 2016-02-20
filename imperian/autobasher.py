@@ -26,7 +26,15 @@ area_mobs={"Demon's Pass":[('moroi',True),
             ('ghoul',True),
             ('hound',True),
             ('zombie',True),
-            ('archer',True)]}
+            ('archer',True)],
+           'the Sewage Tunnels of Antioch':
+           [('worm',True)],
+           'the Iaat Valley':
+           [('avian',True),
+            ('beast',True),
+            ('mutant',True),
+            ('direbear',True),
+            ('equine',True)]}
 
 room_blacklist = {"Demon's Pass":[28335],
                   'the Necropolis':[9328]}
@@ -241,7 +249,8 @@ class AutoBasher(EarlyInitialisingModule):
                       '^You have recovered equilibrium\.$',
                       '^You have recovered balance\.$',
                       '^You have cured stun$',
-                      '^You have cured writhe_web$'])
+                      '^You have cured writhe_web$',
+                      '^You have cured paralysis\.$'])
     def balance_recovery(self, match, realm):
         if self.state == 'off':
             return

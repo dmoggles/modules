@@ -32,9 +32,7 @@ class LocationServices(EarlyInitialisingModule):
             self.name_dict = json.load(open(os.path.join(self.f_path, 'name_dict.xml'),'r'))
             
                                        
-    
-    def __del__(self):
-        print('Destructor is called')    
+
         
     @property
     def aliases(self):
@@ -93,7 +91,7 @@ class LocationServices(EarlyInitialisingModule):
                 self.who_state = 'sent_path_search'
                 self.who_location = location
                 realm.send('path search %s'%location)
-                realm.root.set_timer(5, self.reset_who_state, realm)
+                realm.root.set_timer(5, self.reset_who_state)
     
     @binding_trigger('^There are (\d+) players in this world\.$')
     def who_end_trigger(self, match, realm):

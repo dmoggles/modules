@@ -184,8 +184,7 @@ class Tracker:
     def reset(self):
         for a in self.affs.values():
             a.on=False
-            #if self.realm.gui:
-            #    self.realm.gui.set_aff(a.name, False)
+            self.realm.fireEvent('afflictionLostEvent',self.name, [a.name for a in self.affs.values()])
         self.presumed_afflictions=0
             
     def __getitem__(self, value):
@@ -254,13 +253,13 @@ class Tracker:
         self.affs[aff].on=True
         self.affs[aff].last_given=time.time()
         self.presumed_afflictions+=1
+        self.realm.fireEvent('afflictionGainedEvent',self.name, [aff])
+        self.realm.cwrite('<white*:purple>%(name)s - Added <green*:red>%(aff)s'%{'name':self.name,
+                                                                               'aff':aff})
         if old_conf!=True:
             if self.communicator and announce:
                 self.communicator.send_aff(aff,self.name)
-            #if self.realm.gui:
-            #    if self.realm.get_state('target')==self.name:
-            #        self.realm.gui.set_aff(aff, True)
-        
+            
 
     def _remove_aff(self, cure, cure_type, cure_msg):
         if not cure_msg == '':
@@ -268,8 +267,7 @@ class Tracker:
             for a in temp_affs:
                 if re.match(a.third_party_cure, cure_msg):
                     a.on=False
-                    #if self.realm.gui:
-                    #    self.realm.gui.set_aff(a.name, False)
+                    self.realm.fireEvent('afflictionLostEvent',self.name, [a.name])
                     self.realm.cwrite('[[<purple*:green>%s]: <purple*:orange>%s]'%(self.name,a.name))
         
                     self.presumed_afflictions-=1
@@ -305,7 +303,7 @@ class Tracker:
                 old_confidence = aff_to_remove.on
                 aff_to_remove.on = False
                 self.realm.cwrite('[[<purple*:green>%s]: <purple*:orange>%s]'%(self.name,aff_to_remove.name))
-        
+                self.realm.fireEvent('afflictionLostEvent',self.name, [aff_to_remove.name])
                 #if self.realm.gui:
                 #    self.realm.gui.set_aff(aff_to_remove.name, False)
                     
@@ -319,8 +317,7 @@ class Tracker:
             for a in temp_affs:
                 if re.match(a.third_party_cure, cure_msg):
                     a.on=False
-                    #if self.realm.gui:
-                    #    self.realm.gui.set_aff(a.name, False)
+                    self.realm.fireEvent('afflictionLostEvent',self.name, [a.name])
                     self.realm.cwrite('[[<purple*:green>%s]: <purple*:orange>%s]'%(self.name,a.name))
         
                     self.presumed_afflictions-=1
@@ -344,8 +341,8 @@ class Tracker:
                 aff_to_remove.on = False
                 self.realm.cwrite('[[<purple*:green>%s]: <purple*:orange>%s]'%(self.name,aff_to_remove.name))
         
-                #if self.realm.gui:
-                #    self.realm.gui.set_aff(aff_to_remove.name, False)
+                self.realm.fireEvent('afflictionLostEvent',self.name, [aff_to_remove.name])
+                    
                 self.presumed_afflictions-=1
                 #if (old_confidence==True):
                 #    print(self.output())
@@ -356,12 +353,12 @@ class Tracker:
         if affliction in self.affs:
             self.presumed_afflictions-=1
             self.affs[affliction].on=False
-            #if self.realm.gui:
-            #    self.realm.gui.set_aff(affliction, False)
+            self.realm.fireEvent('afflictionLostEvent',self.name, [affliction])
 
     def eat_cure(self, cure, cure_msg):
         cure=get_cure(cure)
         self.affs['anorexia'].on=False
+        self.realm.fireEvent('afflictionLostEvent',self.name, ['anorexia'])
         self.last_eat = time.time()
         if cure == 'juniper':
             self.deaf = True
@@ -373,32 +370,44 @@ class Tracker:
     def pipe_cure(self, cure, cure_msg):
         cure=get_cure(cure)
         self.affs['asthma'].on=False
+        self.realm.fireEvent('afflictionLostEvent',self.name, ['asthma'])
+        
         self.last_smoke=time.time()
         self._remove_aff(cure, PIPE, cure_msg)
     
     def salve_cure(self,  cure_msg):
         self.affs['slickness'].on=False
+        self.realm.fireEvent('afflictionLostEvent',self.name, ['slickness'])
+        
         self.last_salve = time.time()  
         self._remove_aff(None, SALVE, cure_msg)
         
     def tree_cure(self, cure_msg):
         self.affs['numbness'].on=False
         self.affs['paralysis'].on=False
+        self.realm.fireEvent('afflictionLostEvent',self.name, ['numbness','paralysis'])
+        
         self.last_tree=time.time()
         self._remove_aff_extra_cure(TREEABLE, cure_msg)
           
     def purge_cure(self, cure_msg):
         self.affs['hemotoxin'].on=False
+        self.realm.fireEvent('afflictionLostEvent',self.name, ['hemotoxin'])
+        
         self.last_purge=time.time()
         self._remove_aff_extra_cure(PURGEABLE, cure_msg)
         
     def focus_cure(self, cure_msg):
         self.affs['impatience'].on=False
+        self.realm.fireEvent('afflictionLostEvent',self.name, ['impatience'])
+        
         self.last_focus=time.time()
         self._remove_aff_extra_cure(FOCUSABLE, cure_msg)
     
     def drink_elixir(self):
         self.affs['anorexia'].on=False
+        self.realm.fireEvent('afflictionLostEvent',self.name, ['anorexia'])
+        
         self.last_elixir=time.time()
         
     def passive_cure(self, cure_msg):
@@ -407,8 +416,8 @@ class Tracker:
             for a in temp_affs:
                 if re.match(a.third_party_cure, cure_msg):
                     a.on = False
-                    #if self.realm.gui:
-                    #    self.realm.gui.set_aff(a.name, False)
+                    self.realm.fireEvent('afflictionLostEvent',self.name, [a.name])
+        
                     self.realm.cwrite('[[<purple*:green>%s]: <purple*:orange>%s]'%(self.name,a.name))
         
         else:
@@ -421,6 +430,8 @@ class Tracker:
                 aff_to_remove=temp_affs[0]
                 old_confidence = aff_to_remove.on
                 aff_to_remove.on = False
+                self.realm.fireEvent('afflictionLostEvent',self.name, [aff_to_remove.name])
+        
                 self.realm.cwrite('[[<purple*:green>%s]: <purple*:orange>%s]'%(self.name,aff_to_remove.name))
         
                 self.presumed_afflictions-=1
@@ -481,7 +492,6 @@ class Tracker:
     
     def process(self):
         for indx, cure in enumerate(self.tentative_cures):
-            print ('doing cure %s'%str(cure))
             msg=self.tentative_cure_messages[indx]
             if cure[0]==FOCUSABLE:
                 self.focus_cure(msg)

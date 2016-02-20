@@ -157,9 +157,9 @@ class TrackerModule(EarlyInitialisingModule):
         for t in self.trackers.values():
             t.process()
             #t.output()
-        if target!=None and target !='':
-            if realm.root.gui:
-                realm.root.gui.update_cooldowns()
-            else:
-                realm.cwrite('<orange>%s'%self.tracker(target).output())    
+        #if target!=None and target !='':
+            #if realm.root.gui:
+            #    realm.root.gui.update_cooldowns()
+            #else:
+            #    realm.cwrite('<orange>%s'%self.tracker(target).output())    
         

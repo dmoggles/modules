@@ -12,6 +12,8 @@ from autocuring_control import AutocuringControl
 from necromancy import Necromancy
 from deathknight import Deathknight
 from afflictiontracking import communicator
+from diabolist import Diabolist
+from pymudclient.aliases import binding_alias
 name = 'Alesei'
 host = 'imperian.com'
 port = 23
@@ -47,12 +49,22 @@ class MainModule(BaseModule):
         self.walker = Walker(manager, mapper)
         self.necromancy=Necromancy(manager)
         self.communicator = communicator.Communicator(MainModule.combat_channel, MainModule.combat_channel_name, manager)
-            
+        manager.registerEventHandler('afflictionGainedEvent', self.test)
         self.deathknight = Deathknight(manager, self.communicator, shred_draining, shred_agony, lacerate, sabre)
-            
+        #self.diabolist = Diabolist(manager, self.communicator)
+    
+    def test(self, target, affs):
+        self.manager.debug('event fired %s, status: %s'%(target, ','.join(affs)))
     def is_main(self, realm):
             BaseModule.is_main(self, realm)
         
+    @property
+    def aliases(self):
+        return [self.test_gui]
+    
+    @binding_alias('^test_gui$')
+    def test_gui(self, matches, realm):
+        realm.fireEvent('reboundingEvent','shai',1)
     
     @property
     def modules(self):
@@ -61,6 +73,7 @@ class MainModule(BaseModule):
                     ImperianPrompt,
                     AutocuringControl,
                     self.necromancy,
-                    self.deathknight,
+                    #self.deathknight,
+                    self.diabolist,
                     self.communicator
                     ]
