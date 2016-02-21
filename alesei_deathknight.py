@@ -29,6 +29,7 @@ import pymudclient
 from pymudclient.library.imperian.deathknight.deathknight import Deathknight
 from afflictiontracking.trackingmodule import TrackerModule
 from shield_rez import ShieldRez
+from imperian import autobasher
 
 
 name = 'Alesei'
@@ -55,7 +56,7 @@ lacerate = '305569'
 light = '263757'
 sabre = 'sabre'
 
-defense_list = {'weathering':['weathering',1],
+dlist = {'weathering':['weathering',1],
                 'gripping':['grip',0],
                 'deathsight':['deathsight',100],
                 'selfishness':['selfishness',100],
@@ -94,7 +95,8 @@ class MainModule(BaseModule):
             #self.limb_tracker = LimbTracker(realm)
             self.mapper= MapFromXml()
             self.walker = Walker(realm, self.mapper)
-            self.defenses = Defenses(realm, defense_list)
+            self.defenses = Defenses(realm, dlist)
+            self.basher = autobasher.AutoBasher(manager=realm, heal_command='vigour')
             
         def is_main(self, realm):
             BaseModule.is_main(self, realm)
@@ -111,7 +113,8 @@ class MainModule(BaseModule):
                    self.walker,
                    AutocuringControl,
                    self.tracker,
-                   self.shield_track]
+                   self.shield_track,
+                   self.basher]
             
 
        
