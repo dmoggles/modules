@@ -90,10 +90,11 @@ class MainModule(BaseModule):
                                            self.shield_track,
                                            light,shred_infused,
                                            shred_draining,lacerate)
-            self.location_services=LocationServices(realm)
+            self.mapper= MapFromXml()
+            self.location_services=LocationServices(realm, self.mapper)
             self.guards=CitySecurity('squad2')
             #self.limb_tracker = LimbTracker(realm)
-            self.mapper= MapFromXml()
+            
             self.walker = Walker(realm, self.mapper)
             self.defenses = Defenses(realm, dlist)
             self.basher = autobasher.AutoBasher(manager=realm, heal_command='vigour')

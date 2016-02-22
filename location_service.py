@@ -10,6 +10,7 @@ import json
 from pymudclient.gmcp_events import binding_gmcp_event
 from pymudclient.aliases import binding_alias
 from pymudclient.triggers import binding_trigger
+from pymudclient.tagged_ml_parser import taggedml
 
 class LocationServices(EarlyInitialisingModule):
     '''
@@ -17,32 +18,30 @@ class LocationServices(EarlyInitialisingModule):
     '''
 
 
-    def __init__(self, realm):
+    def __init__(self, realm, mapper):
         self.who_state = None
         self.who_target = ''
         self.who_rooms={}
         self.who_location=''
-        self.f_path=os.path.join(os.path.expanduser('~'), 'muddata', 'location')
-        if not os.path.isdir(self.f_path):
-            os.makedirs(self.f_path,)
-        self.vnum_dict={}
-        self.name_dict={}
-        if os.path.exists(os.path.join(self.f_path,'vnum_dict.xml')):
-            self.vnum_dict = json.load(open(os.path.join(self.f_path, 'vnum_dict.xml'),'r'))
-            self.name_dict = json.load(open(os.path.join(self.f_path, 'name_dict.xml'),'r'))
+        #self.f_path=os.path.join(os.path.expanduser('~'), 'muddata', 'location')
+        #if not os.path.isdir(self.f_path):
+        #    os.makedirs(self.f_path,)
+        #self.vnum_dict={}
+        #self.name_dict={}
+        self.mapper = mapper
+        #if os.path.exists(os.path.join(self.f_path,'vnum_dict.xml')):
+        #    self.vnum_dict = json.load(open(os.path.join(self.f_path, 'vnum_dict.xml'),'r'))
+        #    self.name_dict = json.load(open(os.path.join(self.f_path, 'name_dict.xml'),'r'))
             
                                        
 
         
     @property
     def aliases(self):
-        return [self.quit,
-                self.whereis,
+        return [self.whereis,
                 self.path_go]
         
-    @property
-    def gmcp_events(self):
-        return [self.on_room_info]
+   
     
     @property
     def triggers(self):
@@ -50,25 +49,12 @@ class LocationServices(EarlyInitialisingModule):
                 self.who_end_trigger,
                 self.path_search_result]
     
-    @binding_alias('^qq$')
-    def quit(self, match, realm):
-        self.save_data()
+    #@binding_alias('^qq$')
+    #def quit(self, match, realm):
+    #    self.save_data()
     
     
-    def save_data(self):
-        json.dump(self.vnum_dict, open(os.path.join(self.f_path, 'vnum_dict.xml'),'w'))
-        json.dump(self.name_dict, open(os.path.join(self.f_path, 'name_dict.xml'),'w'))
-        
-    @binding_gmcp_event('Room.Info')
-    def on_room_info(self, gmcp_data, realm):
-        vnum = int(gmcp_data['num'])
-        name= gmcp_data['name'].lower()
-        area = gmcp_data['area'].lower()
-    
-        d={'name':name, 'vnum':vnum, 'area':area}
-        self.vnum_dict[vnum]=d
-    
-        self.name_dict[name]=d
+      
         
     @binding_alias('^where(?: (\w+))?$')
     def whereis(self, match, realm):
@@ -82,17 +68,35 @@ class LocationServices(EarlyInitialisingModule):
         realm.send('who %s'%target)
             
         
-    @binding_trigger("^(?: *)(\w+) - .* - ([\w ']+)$")
+    @binding_trigger("^(?: *)(\w+) - .* - ([\w ',\-]+)$")
     def who_trigger(self, match, realm):
+        location = match.group(2)
         if self.who_state=='sent_who':
             target = match.group(1)
-            location = match.group(2)
+            
             if target.lower() == self.who_target:
                 self.who_state = 'sent_path_search'
                 self.who_location = location
                 realm.send('path search %s'%location)
                 realm.root.set_timer(5, self.reset_who_state)
-    
+        
+        
+        #line = taggedml(' <white>(<yellow*>'+'<white>,<yellow>'.join([str(i.vnum) for i in self.mapper.find_by_name(location)]) + '<white>)')
+        l = [str(i.vnum) for i in self.mapper.find_by_name(location)]
+        if len(l) == 1:            
+            line = ' <white>(<yellow*>%s<white>)'%l[0]
+        elif len(l) == 0:
+            line = ' <white>(<red*>*<white>)'
+        else:
+            line = ' <white>(<yellow*>%s<white>,<yellow*>...<white>)'%l[0]
+            
+        ml = taggedml(line)
+        #realm.cwrite(line)
+       
+        realm.alterer.insert_metaline(len(realm.metaline.line), ml)
+       
+        
+                    
     @binding_trigger('^There are (\d+) players in this world\.$')
     def who_end_trigger(self, match, realm):
         if self.who_state == 'sent_who':
@@ -108,11 +112,12 @@ class LocationServices(EarlyInitialisingModule):
             else:
                 number = max(keys)+1
             #number = int(match.group(1))
+            area = match.group(2)
             vnum = match.group(3)
             room = match.group(4)
             if room.startswith(self.who_location):
                 self.who_rooms[number]=vnum
-                realm.cwrite('<red*>%2s<white>. %10s - <yellow*>%s'%(str(number), vnum, room))
+                realm.cwrite('<red*>%2s<white>. %10s - <yellow*>%s <red*>(%s)'%(str(number), vnum, room,area))
             
                 
         

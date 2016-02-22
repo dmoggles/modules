@@ -170,6 +170,7 @@ class Room:
 class MapFromXml:
     def __init__(self, url='http://www.imperian.com/maps/map.xml'):
         self.room_dict={}
+        self.room_name_dict={}
         self.areas={}
         r=requests.get(url)
         if r.ok:
@@ -179,6 +180,7 @@ class MapFromXml:
             for room in root.findall('rooms/room'):
                 room_obj = Room(int(room.attrib['id']), room.attrib['title'],int(room.attrib['area']), exits_to_dict(room.findall('exit')))
                 self.room_dict[room_obj.vnum]=room_obj
+                self.room_name_dict[room_obj.name]=room_obj
             for room in self.room_dict:
                 for e in self.room_dict[room].exits.keys():
                     if e not in self.room_dict:
@@ -189,8 +191,14 @@ class MapFromXml:
         return self.room_dict[item]
     
     def find_by_name(self, name):
-        return [r for r in self.room_dict.values() if name in r.name]
-    
+        #if str(name) in self.room_name_dict:
+        #    return [self.room_name_dict[str(name)]]
+        l = [r for r in self.room_dict.values() if str(name)==r.name]
+        if len(l)>0:
+            return l
+        else:
+            return [r for r in self.room_dict.values() if name in r.name]
+        
     
     def area_tree(self, start, blacklist):
         '''
