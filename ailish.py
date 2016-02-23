@@ -26,6 +26,7 @@ from pymudclient.library.imperian.defenses import Defenses
 from pymudclient.triggers import binding_trigger
 from autocuring_control import AutocuringControl
 from self_afflictions import SelfAfflictions
+from location_service import LocationServices
 
 name = 'Ailish'
 host = 'imperian.com'
@@ -85,6 +86,7 @@ class MainModule(BaseModule):
             self.warchants = Warchants(realm, self.tracker)
             self.shields = ShieldMaiming(realm, self.tracker)
             self.dances = Dances(realm)
+            self.location_services = LocationServices(realm, self.mapper)
             self.berserk = BerskerComboMaker(realm,
                                              self.shields, 
                                              self.rage, 
@@ -115,7 +117,8 @@ class MainModule(BaseModule):
                    self.dances,
                    self.defenses,
                    AutocuringControl,
-                   SelfAfflictions]
+                   SelfAfflictions,
+                   self.location_services]
             
         
         

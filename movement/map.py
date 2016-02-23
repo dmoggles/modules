@@ -193,11 +193,13 @@ class MapFromXml:
     def find_by_name(self, name):
         #if str(name) in self.room_name_dict:
         #    return [self.room_name_dict[str(name)]]
-        l = [r for r in self.room_dict.values() if str(name)==r.name]
+        # 7287 is the ridiculous fake Antioch Shuk
+        fake_shuks = [7287, 10545]
+        l = [r for r in self.room_dict.values() if (str(name)==r.name) and (not r.vnum in fake_shuks)]
         if len(l)>0:
             return l
         else:
-            return [r for r in self.room_dict.values() if name in r.name]
+            return [r for r in self.room_dict.values() if (name in r.name) and (not r.vnum in fake_shuks)]
         
     
     def area_tree(self, start, blacklist):
