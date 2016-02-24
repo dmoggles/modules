@@ -69,7 +69,7 @@ class Communicator(EarlyInitialisingModule):
     def add_whitelist(self, match, realm):
         realm.send_to_mud = False
         self.whitelist.append(match.group(1).lower())
-        d_name = os.path.join(os.path.expanduser('~'),'muddata','whitelist', realm.root.factory.name.lower())
+        d_name = os.path.join(os.path.expanduser('~'),'muddata','whitelist', realm.root.name.lower())
         f=open(d_name+'/whitelist.xml','w')
         json.dump(self.whitelist, f)
         realm.cwrite('<white*> Added %s to whitelist'%match.group(1))

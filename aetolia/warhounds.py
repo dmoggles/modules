@@ -83,7 +83,7 @@ class WarhoundParser(EarlyInitialisingModule):
 class WarhoundPicker(BaseModule):
     def __init__(self, manager):
         BaseModule.__init__(self, manager)
-        print('hello')
+        #print('hello')
         self.reset()
         self.state = 'off'
         manager.registerEventHandler('houndDoneEvent', self.process_hound)

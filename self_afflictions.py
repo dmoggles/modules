@@ -50,7 +50,6 @@ class SelfAfflictions(BaseModule):
      
     def output(self):
         s = '||'.join(["%s: %s"%(k[:3],','.join(v)) for k,v in self.by_cure_table.items() if len(v)> 0])
-        print s
         return s
        
     @binding_gmcp_event('Char.Afflictions.Add')
