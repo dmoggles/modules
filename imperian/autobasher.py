@@ -34,7 +34,10 @@ area_mobs={"Demon's Pass":[('moroi',True),
             ('beast',True),
             ('mutant',True),
             ('direbear',True),
-            ('equine',True)]}
+            ('equine',True)],
+           'the Underworld Khandava':
+           [('basilisk',True),
+            ('bat',True)]}
 
 room_blacklist = {"Demon's Pass":[28335],
                   'the Necropolis':[9328]}
@@ -293,7 +296,9 @@ class AutoBasher(EarlyInitialisingModule):
     @binding_trigger(["^You can find no such target as '(\d+)'\.",
                       '^Ahh, I am truly sorry, but I do not see anyone by that name here\.$',
                       '^Nothing can be seen here by that name\.$',
-                      '^I do not recognize anything called that here\.$'])
+                      '^I do not recognize anything called that here\.$',
+                      '^You detect nothing here by that name\.$',
+                      '^You do not see that individual here\.$'])
     def tar_error(self, match, realm):
         if self.state == 'off':
             return

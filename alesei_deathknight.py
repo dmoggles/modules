@@ -30,6 +30,9 @@ from pymudclient.library.imperian.deathknight.deathknight import Deathknight
 from afflictiontracking.trackingmodule import TrackerModule
 from shield_rez import ShieldRez
 from imperian import autobasher
+from pymudclient.library.imperian.limb_tracker import LimbTrack
+from pymudclient.library.imperian.autoparry import Autoparry
+from pymudclient.library.imperian.alerts import Alerts
 
 
 name = 'Alesei'
@@ -85,11 +88,14 @@ class MainModule(BaseModule):
             self.communicator = communicator.Communicator(MainModule.combat_channel, MainModule.combat_channel_name, realm)
             self.tracker = TrackerModule(realm, self.communicator, True)
             self.shield_track = ShieldRez(realm)
+            self.limb_tracker = LimbTrack(realm)
+            self.autoparry = Autoparry(realm, self.limb_tracker)
             self.deathknight = Deathknight(realm,self.communicator,
                                            self.tracker,
                                            self.shield_track,
                                            light,shred_infused,
-                                           shred_draining,lacerate)
+                                           shred_draining,lacerate,
+                                           self.autoparry)
             self.mapper= MapFromXml()
             self.location_services=LocationServices(realm, self.mapper)
             self.guards=CitySecurity('squad2')
@@ -115,7 +121,10 @@ class MainModule(BaseModule):
                    AutocuringControl,
                    self.tracker,
                    self.shield_track,
-                   self.basher]
+                   self.basher,
+                   self.limb_tracker,
+                   self.autoparry,
+                   Alerts]
             
 
        

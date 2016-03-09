@@ -11,6 +11,28 @@ from pymudclient.gmcp_events import binding_gmcp_event
 from pymudclient.aliases import binding_alias
 from pymudclient.triggers import binding_trigger
 from pymudclient.tagged_ml_parser import taggedml
+from pymudclient.library.imperian.imperian import get_char_data
+
+profession_map={'deathknight':'demonic',
+                'defiler':'demonic',
+                'summoner':'demonic',
+                'diabolist':'demonic',
+                'assassin':'demonic',
+                'wytch':'demonic',
+                'runeguard':'magick',
+                'bard':'magick',
+                'druid':'magick',
+                'hunter':'magick',
+                'renegade':'magick',
+                'mage':'magick',
+                'templar':'antimagick',
+                'monk':'antimagick',
+                'priest':'antimagick',
+                'berserker':'antimagick',
+                'ranger':'antimagick',
+                'predator':'antimagick',
+                'outrider':'antimagick',
+                'amazon':'antimagick'}
 
 class LocationServices(EarlyInitialisingModule):
     '''
@@ -32,14 +54,18 @@ class LocationServices(EarlyInitialisingModule):
         #if os.path.exists(os.path.join(self.f_path,'vnum_dict.xml')):
         #    self.vnum_dict = json.load(open(os.path.join(self.f_path, 'vnum_dict.xml'),'r'))
         #    self.name_dict = json.load(open(os.path.join(self.f_path, 'name_dict.xml'),'r'))
-            
+        self.people_db={}
+        self.circle_db={'antimagick':{}, 'magick':{}, 'demonic':{}}
+        
                                        
 
         
     @property
     def aliases(self):
         return [self.whereis,
-                self.path_go]
+                self.path_go,
+                self.print_circles,
+                self.full_who]
         
    
     
@@ -53,9 +79,28 @@ class LocationServices(EarlyInitialisingModule):
     #def quit(self, match, realm):
     #    self.save_data()
     
+    def get_color(self, circle):
+        if circle=='demonic':
+            return 'green*'
+        elif circle == 'magick':
+            return 'blue*'
+        else:
+            return 'red*'
     
-      
+    @binding_alias('^print circles$')
+    def print_circles(self, match, realm):
+        realm.send_to_mud = False
+        realm.cwrite('\n'.join('<%(color)s>%(circle)s<white>: %(plist)s'%{'color':self.get_color(k),
+                                                                   'circle':k,
+                                                                   'plist':', '.join(sorted(self.circle_db[k].keys()))} for k in self.circle_db))
+    
+    @binding_alias('^fwho$')
+    def full_who(self, match, realm):
+        realm.send_to_mud = False
+        self.who_state = 'full_who'
+        realm.send('who')
         
+    
     @binding_alias('^where(?: (\w+))?$')
     def whereis(self, match, realm):
         realm.send_to_mud = False
@@ -71,8 +116,12 @@ class LocationServices(EarlyInitialisingModule):
     @binding_trigger("^(?: *)(\w+) - .* - ([\w ',\-]+)$")
     def who_trigger(self, match, realm):
         location = match.group(2)
+        target = match.group(1)
+        if self.who_state == 'full_who':
+            data = get_char_data(target)
+            self.people_db[data['name'].lower()]=data
+            self.circle_db[profession_map[data['profession'].lower()]][data['name'].lower()]=data
         if self.who_state=='sent_who':
-            target = match.group(1)
             
             if target.lower() == self.who_target:
                 self.who_state = 'sent_path_search'
@@ -99,7 +148,7 @@ class LocationServices(EarlyInitialisingModule):
                     
     @binding_trigger('^There are (\d+) players in this world\.$')
     def who_end_trigger(self, match, realm):
-        if self.who_state == 'sent_who':
+        if self.who_state == 'sent_who' or self.who_state == 'full_who':
             self.who_state = None
             
     @binding_trigger("^(?: *)(\w+)\. ([\w ']+[a-z])(?: *)(\d+)(?: *)([\w ']+[a-z])$")
