@@ -33,6 +33,7 @@ from imperian import autobasher
 from pymudclient.library.imperian.limb_tracker import LimbTrack
 from pymudclient.library.imperian.autoparry import Autoparry
 from pymudclient.library.imperian.alerts import Alerts
+from pymudclient.library.imperian.people_services import PeopleServices
 
 
 name = 'Alesei'

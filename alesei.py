@@ -14,6 +14,7 @@ from deathknight import Deathknight
 from afflictiontracking import communicator
 from diabolist import Diabolist
 from pymudclient.aliases import binding_alias
+from pymudclient.colours import ORANGE
 name = 'Alesei'
 host = 'imperian.com'
 port = 23
@@ -52,7 +53,7 @@ class MainModule(BaseModule):
         manager.registerEventHandler('afflictionGainedEvent', self.test)
         self.deathknight = Deathknight(manager, self.communicator, shred_draining, shred_agony, lacerate, sabre)
         #self.diabolist = Diabolist(manager, self.communicator)
-    
+        manager.add_highlight('Alesei',ORANGE)
     def test(self, target, affs):
         self.manager.debug('event fired %s, status: %s'%(target, ','.join(affs)))
     def is_main(self, realm):
