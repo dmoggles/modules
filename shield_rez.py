@@ -37,8 +37,10 @@ class ShieldStatus:
         rebound_line = '<red*>ON' if self.aura else '<green*>OFF'
         barrier_line = '<red*>ON' if self.barrier else '<green*>OFF'
         line = '<yellow*>S:%(shields)s <yellow*>R:%(rebound)s <yellow*>B:%(barrier)s'%{'shields':shield_line,
-                                                                                       'rebound':rebound_line,
+                                                                                      'rebound':rebound_line,
                                                                                        'barrier':barrier_line}
+        return line
+    
     @property
     def metaLine(self):
         line="Shield|Aura|Barrier"
@@ -74,6 +76,7 @@ class ShieldRez(EarlyInitialisingModule):
         '''
         @rtype: ShieldStatus
         '''
+        item = item.lower()
         if not item in self.raze_data:
             self.raze_data[item]=ShieldStatus(aura=True)
         return self.raze_data[item]
@@ -111,8 +114,10 @@ class ShieldRez(EarlyInitialisingModule):
         my_target=realm.root.get_state('target').lower()
         if not my_target in self.raze_data:
             self.raze_data[my_target]=ShieldStatus(aura=False)
+            
         else:
             self.raze_data[my_target].aura=False
+            
         realm.write(simpleml('REBOUNDING OFF, REBOUNDING OFF',fg_code(YELLOW,True),bg_code(RED)))
         realm.root.fireEvent('reboundingEvent',my_target,0)
             
@@ -240,7 +245,7 @@ class ShieldRez(EarlyInitialisingModule):
                     
     @binding_trigger('(\w+) takes a long drag off his pipe, exhaling a thick, white haze')
     def rebounding_soon(self, match, realm):
-        realm.display_line = False
+        #realm.display_line = False
         my_target=match.group(1).lower()
         if my_target==realm.root.get_state('target').lower():
             realm.write(simpleml('REBOUNDING SOON, REBOUNDING SOON!', fg_code(YELLOW,True),bg_code(RED)))

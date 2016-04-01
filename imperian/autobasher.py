@@ -37,11 +37,22 @@ area_mobs={"Demon's Pass":[('moroi',True),
             ('equine',True)],
            'the Underworld Khandava':
            [('basilisk',True),
-            ('bat',True)]}
+            ('bat',True),
+            ('inhabitant',True),
+            ('townsperson',True),
+            ('native',True),
+            ('arboreal',True),
+            ('earthsinger',True),
+            ('centaur',True),
+            ('spirit',True),
+            ('faun',True),
+            ('defiler',True),
+            ('assassin',True)]}
 
 room_blacklist = {"Demon's Pass":[28335],
                   'the Necropolis':[9328]}
 
+exclusion_mobs = [1000]
 class AutoBasher(EarlyInitialisingModule):
     '''
     classdocs
@@ -176,7 +187,7 @@ class AutoBasher(EarlyInitialisingModule):
         items = realm.root.gmcp['Char.Items.List']['items']
         for item in items:
             for name,aggro in mobs:
-                if name in item['name'].lower():
+                if name in item['name'].lower() and not int(item['id']) in exclusion_mobs:
                     if aggro:
                         self.aggro_list.append(int(item['id']))
                     else:

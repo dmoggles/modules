@@ -15,7 +15,7 @@ class Communicator(EarlyInitialisingModule):
     '''
 
 
-    def __init__(self, clan_number, clan_name, realm):
+    def __init__(self, clan_number, clan_name, realm, my_circle, people_services):
         
         '''
         Constructor
@@ -24,6 +24,8 @@ class Communicator(EarlyInitialisingModule):
         self.clan_name=clan_name.capitalize()
         self.realm = realm
         self.aff_tracker=None
+        self.my_circle=my_circle,
+        self.people_services = people_services
         self.on=False
         self.whitelist=[]
         d_name = os.path.join(os.path.expanduser('~'),'muddata','whitelist', 'alesei_deathknight')
@@ -122,11 +124,14 @@ class Communicator(EarlyInitialisingModule):
         self.say('afflicted %s %s'%(target, aff))
         
     def player_entered(self, player, area):
-        if self.on and player.lower() not in self.whitelist:
+        circle = self.people_services.check_circle(player)
+        
+        if self.on and circle!=self.my_circle:
             self.realm.send('rt [Bloodscent]: %s ENTERED %s'%(player, area))
     
     def player_left(self, player, area):
-        if self.on and player.lower() not in self.whitelist:
+        circle = self.people_services.check_circle(player)
+        if self.on and circle!=self.my_circle:
             self.realm.send('rt [Bloodscent]: %s LEFT %s'%(player, area))
               
     @binding_trigger('^A starburst tattoo flares and bathes (\w+) in a nimbus of white light.$')

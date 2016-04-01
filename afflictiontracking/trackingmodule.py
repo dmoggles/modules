@@ -3,6 +3,7 @@ from pymudclient.triggers import binding_trigger
 from pymudclient.aliases import binding_alias
 
 from afflictiontracker import Tracker,TREEABLE,FOCUSABLE,PURGEABLE,HERB,PIPE,SALVE,PASSIVE
+from pymudclient.tagged_ml_parser import taggedml
 
 
 class TrackerModule(EarlyInitialisingModule):
@@ -42,7 +43,17 @@ class TrackerModule(EarlyInitialisingModule):
                self.peace_off,
                self.asthma_off,
                self.toxin_hit,
-               self.haemophilia]
+               self.haemophilia,
+               self.numbness_to_paralysis,
+               self.justice,
+               self.madness,
+               self.epilepsy,
+               self.deadening,
+               self.sunallergy,
+               self.masochism,
+               self.hallucinations,
+               self.addiction,
+               self.clumsiness]
         
     @property
     def aliases(self):
@@ -54,6 +65,56 @@ class TrackerModule(EarlyInitialisingModule):
         realm.send_to_mud=False
         self.tracker('me').print_priorities()
     
+    @binding_trigger("^(\w+) lurches forward, but misses you with .+\.$")
+    def clumsiness(self, match, realm):
+        person=match.group(1).lower()
+        self.tracker(person).add_aff('addiction')
+    
+    @binding_trigger("^At \w+'s command, .+treant.+ shreds (\w+)'s skin with its branches, thorns cutting painfully into (?:his|her) flesh\.$")
+    def addiction(self, match, realm):
+        person=match.group(1).lower()
+        self.tracker(person).add_aff('addiction')
+    
+    
+    @binding_trigger(["^(\w+) leaps up in what is apparently an attempt at a graceful swan dive\.$",
+                      "^(\w+) squints strangely at you\.$"])
+    def hallucinations(self, match, realm):
+        person=match.group(1).lower()
+        self.tracker(person).add_aff('hallucinations')
+    
+    @binding_trigger(["^(\w+) smiles as (?:he|she) rams (?:his|her) fist into (?:his|her) jaw\.$",
+                      "^(\w+) uses (?:his|her) (?:right|left) foot to stomp on (?:his|her) (?:right|left) as hard as possible\.$",
+                      "^With the heel of (?:his|her) palm, (\w+) smacks (?:himself|herself) upside the head\.$"])
+    def masochism(self, match, realm):
+        person=match.group(1).lower()
+        self.tracker(person).add_aff('masochism')
+    
+    @binding_trigger("^(\w+) screams in agony, skin steaming in the sunlight\.$")
+    def sunallergy(self, match, realm):
+        person=match.group(1).lower()
+        self.tracker(person).add_aff('sunallergy')
+    
+    @binding_trigger("^(\w+) makes an oddly stuttered sound\.$")
+    def deadening(self, match, realm):
+        person=match.group(1).lower()
+        self.tracker(person).add_aff('deadening')
+    
+    @binding_trigger("^Justice is dealt out and (\w+)'s attack rebounds onto \w+\.$")
+    def justice(self, match, realm):
+        person=match.group(1).lower()
+        self.tracker(person).add_aff('justice')
+    
+    @binding_trigger("^(\w+) trembles and (?:his|her) eyes widen in terror\.$")
+    def madness(self, match, realm):
+        person=match.group(1).lower()
+        self.tracker(person).add_aff('madness')
+        
+    @binding_trigger("^(\w+) twitches imperceptibly\.$")
+    def epilepsy(self, match, realm):
+        person=match.group(1).lower()
+        self.tracker(person).add_aff('madness')
+    
+      
     @binding_trigger(["^(\w+)'s blood starts flowing more freely\.",
                       "^You shred (\w+)'s skin viciously with a shining longsword, causing a nasty infection\.$"])
     def haemophilia(self, match, realm):
@@ -99,12 +160,17 @@ class TrackerModule(EarlyInitialisingModule):
         name=match.group(1)
         self.tracker(name).add_tentative_cure(PURGEABLE, None)
         
-    @binding_trigger('^A look of extreme focus crosses the face of (\w+)\.$')
+    @binding_trigger('^A look of extreme focus crosses the face of (\w+)$')
     def uses_focus(self, match, realm):
         name=match.group(1)
         self.tracker(name).add_tentative_cure(FOCUSABLE, None)
     
-    
+    @binding_trigger("^(\w+)'s muscles lock up in paralysis\.$")
+    def numbness_to_paralysis(self, match, realm):
+        name = match.group(1)
+        self.tracker(name).cure_specific_aff('numbness')
+        self.tracker(name).add_aff('paralysis')
+        
     @binding_trigger("^(\w+)'s looks much less fit after the attack\.$")
     def asthma_off(self, match, realm):
         name=match.group(1)
@@ -156,6 +222,16 @@ class TrackerModule(EarlyInitialisingModule):
         
         for t in self.trackers.values():
             t.process()
+        
+        if target != "":
+            tracker = self.tracker(target)
+            mentals = [a.name for a in tracker.affs.values() if a.is_it(FOCUSABLE) and a.on==True]
+            physicals = [a.name for a in tracker.affs.values() if not a.is_it(FOCUSABLE) and a.on==True ]
+            if len(mentals)>0 or len(physicals)>0:
+                line = '[M: <blue>%(mentals)s <white>P:<red*> %(physicals)s<white>]'%{'mentals':'<white>,<blue>'.join(mentals),
+                                                                          'physicals':'<white>,<red*>'.join(physicals)}
+                
+                realm.alterer.insert_metaline(len(realm.metaline.line), taggedml(line))
             #t.output()
         #if target!=None and target !='':
             #if realm.root.gui:

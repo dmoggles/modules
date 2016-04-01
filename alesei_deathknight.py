@@ -34,6 +34,7 @@ from pymudclient.library.imperian.limb_tracker import LimbTrack
 from pymudclient.library.imperian.autoparry import Autoparry
 from pymudclient.library.imperian.alerts import Alerts
 from pymudclient.library.imperian.people_services import PeopleServices
+from pymudclient.library.imperian.player_tracker import PlayerTracker
 
 
 name = 'Alesei'
@@ -53,12 +54,12 @@ def gui_configure(realm):
     realm.extra_gui=ImperianGui(realm)
 
 
-
-shred_infused = '123747'
-shred_draining = '24163'
-lacerate = '305569'
-light = '263757'
-sabre = 'sabre'
+weapons={}
+weapons['infused'] = '123747'
+weapons['regular'] = '24163'
+weapons['finisher'] = '305569'
+weapons['draining']= '263757'
+weapons['sabre'] = 'sabre'
 
 dlist = {'weathering':['weathering',1],
                 'gripping':['grip',0],
@@ -85,8 +86,10 @@ class MainModule(BaseModule):
         def __init__(self, realm):
             BaseModule.__init__(self,realm)
             self.map_mode=False
+            #self.people_service = PeopleServices(realm)
+            #self.player_tracker = PlayerTracker(realm, self.people_service)
             self.necromancy=Necromancy(realm)
-            self.communicator = communicator.Communicator(MainModule.combat_channel, MainModule.combat_channel_name, realm)
+            self.communicator = communicator.Communicator(MainModule.combat_channel, MainModule.combat_channel_name, realm, "demonic", None)
             self.tracker = TrackerModule(realm, self.communicator, True)
             self.shield_track = ShieldRez(realm)
             self.limb_tracker = LimbTrack(realm)
@@ -94,9 +97,9 @@ class MainModule(BaseModule):
             self.deathknight = Deathknight(realm,self.communicator,
                                            self.tracker,
                                            self.shield_track,
-                                           light,shred_infused,
-                                           shred_draining,lacerate,
-                                           self.autoparry)
+                                           weapons,
+                                           self.autoparry,
+                                           self.limb_tracker)
             self.mapper= MapFromXml()
             self.location_services=LocationServices(realm, self.mapper)
             self.guards=CitySecurity('squad2')
@@ -125,7 +128,9 @@ class MainModule(BaseModule):
                    self.basher,
                    self.limb_tracker,
                    self.autoparry,
-                   Alerts]
+                   Alerts] 
+                   #self.people_service,
+                   #self.player_tracker]
             
 
        
