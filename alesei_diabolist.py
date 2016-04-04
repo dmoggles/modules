@@ -69,7 +69,7 @@ class MainModule(BaseModule):
         
         self.walker = Walker(realm, self.mapper)
         self.defenses = Defenses(realm, dlist)
-        self.basher = autobasher.AutoBasher(manager=realm, heal_command='vigour')
+        self.basher = autobasher.AutoBasher(manager=realm, heal_command='vigour', attack_command='stand|quickdraw daegger shield|kill %(target)s')
         self.diabolist = Diabolist(realm, self.tracker, self.shield_track, self.autoparry, self.communicator)
             
     @property

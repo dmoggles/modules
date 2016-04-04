@@ -115,6 +115,10 @@ class Communicator(EarlyInitialisingModule):
             if channel==self.clan_name:
                 self.aff_tracker.tracker(target).add_aff(affliction, False)
     
+    def announce_target(self, target):
+        if self.on:
+            self.realm.send('rt Target: %s'%target.capitalize())
+    
     def send_health_mana(self, target, hp, maxhp, mana, maxmana):
         if self.on:
             self.realm.send('rt %s: %d/%d HP, %d/%d (%0.0f%%) Mana'%

@@ -47,12 +47,26 @@ area_mobs={"Demon's Pass":[('moroi',True),
             ('spirit',True),
             ('faun',True),
             ('defiler',True),
-            ('assassin',True)]}
+            ('assassin',True),
+            ('badger',True),
+            ('lycaean',True),
+            ('treant',True),
+            ('millipede',True),
+            ('spider',True)],
+           'the Underworld Stavenn':
+           [('rat',True)],
+           'the Underworld Celidon':
+           [('xiur',True),
+            ('phoenix',True),
+            ('hunter',True),
+            ('dryad',True),
+            ('huntress',True),
+            ('centaur',True)]}
 
 room_blacklist = {"Demon's Pass":[28335],
                   'the Necropolis':[9328]}
 
-exclusion_mobs = [1000]
+exclusion_mobs = [1000, 178721]
 class AutoBasher(EarlyInitialisingModule):
     '''
     classdocs
@@ -71,7 +85,7 @@ class AutoBasher(EarlyInitialisingModule):
         self.attack_command = attack_command
         self.heal_command=heal_command
         self.current_room=0
-        self.auto_move = False
+        self.auto_move = True
         
         self.scheduler=None
         
@@ -348,6 +362,14 @@ class AutoBasher(EarlyInitialisingModule):
             self.auto_move = (opt=='on')
         elif comm == 'aggrolimit':
             self.aggro_limit = int(opt)
+        elif comm == 'show':
+            if opt == 'mobs':
+                area = realm.root.gmcp['Room.Info']['area']
+                if area in area_mobs:
+                    mobs = area_mobs[area]
+                    realm.write('area mobs: %s'%','.join([a[0] for a in mobs]))
+                else:
+                    realm.write('Area %s has no mob list'%area)
             
     @binding_trigger('Your movement is held up by (\w+)\.')
     def follower_not_ready(self, match, realm):

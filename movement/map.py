@@ -194,7 +194,7 @@ class MapFromXml:
         #if str(name) in self.room_name_dict:
         #    return [self.room_name_dict[str(name)]]
         # 7287 is the ridiculous fake Antioch Shuk
-        fake_shuks = [7287, 10545]
+        fake_shuks = [7287, 10545, 7640]
         l = [r for r in self.room_dict.values() if (str(name)==r.name) and (not r.vnum in fake_shuks)]
         if len(l)>0:
             return l

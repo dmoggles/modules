@@ -21,6 +21,7 @@ from pymudclient.library.imperian.imperian_prompt import ImperianPrompt
 from autocuring_control import AutocuringControl
 from pymudclient.library.imperian.alerts import Alerts
 from pymudclient.library.imperian.defenses import Defenses
+from imperian.defiler import Defiler
 
 defenses = {'deathsight':['deathsight',100],
             'selfishness':['selfishness',100],
@@ -33,7 +34,8 @@ defenses = {'deathsight':['deathsight',100],
             'shroud':['shadowbind me with shroud',20],
             'confutation':['shadowbind me with confutation',15],
             'regrowth':['shadowbind me with regrowth',15],
-            'recuperation':['shadowbind me with recuperation',15]}
+            'recuperation':['shadowbind me with recuperation',15],
+            'antibodies':['shadowbind me with antibodies',20]}
 
 class MainModule(BaseModule):
     '''
@@ -56,7 +58,8 @@ class MainModule(BaseModule):
         self.guards=CitySecurity('squad2')
         self.walker = Walker(client, self.mapper)
         self.defenses = Defenses(client, defenses)
-        self.basher = autobasher.AutoBasher(manager=client, heal_command='vigour')
+        self.basher = autobasher.AutoBasher(manager=client, heal_command='shadowbind me with trance')
+        self.defiler = Defiler(client, self.shield_track, self.tracker, self.limb_tracker, self.autoparry)
                 
     @property
     def modules(self):
@@ -73,4 +76,5 @@ class MainModule(BaseModule):
                    self.basher,
                    self.limb_tracker,
                    self.autoparry,
-                   Alerts]
+                   Alerts,
+                   self.defiler]
