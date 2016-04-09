@@ -216,7 +216,7 @@ class TrackerModule(EarlyInitialisingModule):
         realm.cwrite('<black:white>Resetting afflictions on %s'%target)
         self.tracker(target).reset()
     
-    @binding_trigger('^H:(\d+) M:(\d+)')
+    @binding_trigger('^H:(\d+) M:(\d+)', sequence=100)
     def on_prompt(self, match, realm):
         target=realm.root.get_state('target')
         

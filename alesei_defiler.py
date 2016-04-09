@@ -35,7 +35,10 @@ defenses = {'deathsight':['deathsight',100],
             'confutation':['shadowbind me with confutation',15],
             'regrowth':['shadowbind me with regrowth',15],
             'recuperation':['shadowbind me with recuperation',15],
-            'antibodies':['shadowbind me with antibodies',20]}
+            #'antibodies':['shadowbind me with antibodies',20],
+            'celerity':['celerity',40],
+            'fleetness':['shadowbind me with fleetness',30],
+            'limb toughness':['shadowbind me with toughness',25]}
 
 class MainModule(BaseModule):
     '''
@@ -59,7 +62,7 @@ class MainModule(BaseModule):
         self.walker = Walker(client, self.mapper)
         self.defenses = Defenses(client, defenses)
         self.basher = autobasher.AutoBasher(manager=client, heal_command='shadowbind me with trance')
-        self.defiler = Defiler(client, self.shield_track, self.tracker, self.limb_tracker, self.autoparry)
+        self.defiler = Defiler(client, self.shield_track, self.tracker, self.limb_tracker, self.autoparry, self.communicator)
                 
     @property
     def modules(self):
