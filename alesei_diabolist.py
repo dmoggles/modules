@@ -52,8 +52,6 @@ class MainModule(BaseModule):
     def __init__(self, realm):
         BaseModule.__init__(self,realm)
         self.map_mode=False
-        #self.people_service = PeopleServices(realm)
-        #self.player_tracker = PlayerTracker(realm, self.people_service)
         self.necromancy=Necromancy(realm)
         self.communicator = communicator.Communicator(MainModule.combat_channel, MainModule.combat_channel_name, realm, "demonic", None)#self.people_service)
         self.tracker = TrackerModule(realm, self.communicator, True)
@@ -71,6 +69,8 @@ class MainModule(BaseModule):
         self.defenses = Defenses(realm, dlist)
         self.basher = autobasher.AutoBasher(manager=realm, heal_command='vigour', attack_command='stand|quickdraw daegger shield|kill %(target)s')
         self.diabolist = Diabolist(realm, self.tracker, self.shield_track, self.autoparry, self.communicator)
+        self.people_service = PeopleServices(realm)
+        self.player_tracker = PlayerTracker(realm, self.people_service)
             
     @property
     def modules(self):
@@ -88,8 +88,8 @@ class MainModule(BaseModule):
                    self.limb_tracker,
                    self.autoparry,
                    Alerts, 
-                   #self.people_service,
-                   #self.player_tracker,
+                   self.people_service,
+                   self.player_tracker,
                    self.diabolist]
         
     @property

@@ -22,6 +22,9 @@ from autocuring_control import AutocuringControl
 from pymudclient.library.imperian.alerts import Alerts
 from pymudclient.library.imperian.defenses import Defenses
 from imperian.defiler import Defiler
+from pymudclient.library.imperian.people_services import PeopleServices
+from pymudclient.library.imperian.player_tracker import PlayerTracker
+from imperian.elixrefiller import ElixRefiller
 
 defenses = {'deathsight':['deathsight',100],
             'selfishness':['selfishness',100],
@@ -63,10 +66,14 @@ class MainModule(BaseModule):
         self.defenses = Defenses(client, defenses)
         self.basher = autobasher.AutoBasher(manager=client, heal_command='shadowbind me with trance')
         self.defiler = Defiler(client, self.shield_track, self.tracker, self.limb_tracker, self.autoparry, self.communicator)
-                
+        self.people_service = PeopleServices(client)
+        self.player_tracker = PlayerTracker(client, self.people_service)
+        
+        
     @property
     def modules(self):
         return [ImperianModule,ChannelHandler, self.defenses,
+                   ElixRefiller,
                    SelfAfflictions, self.communicator,
                    self.location_services,
                    self.guards,
@@ -80,4 +87,6 @@ class MainModule(BaseModule):
                    self.limb_tracker,
                    self.autoparry,
                    Alerts,
+                   self.people_service,
+                   self.player_tracker,
                    self.defiler]

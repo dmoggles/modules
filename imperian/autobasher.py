@@ -66,7 +66,7 @@ area_mobs={"Demon's Pass":[('moroi',True),
 room_blacklist = {"Demon's Pass":[28335],
                   'the Necropolis':[9328]}
 
-exclusion_mobs = [1000, 178721]
+exclusion_mobs = [1000, 178721, 343278]
 class AutoBasher(EarlyInitialisingModule):
     '''
     classdocs

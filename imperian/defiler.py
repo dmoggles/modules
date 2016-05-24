@@ -297,7 +297,7 @@ class Defiler(ImperianCombatModule):
         self.sap(person).reset_sap(realm, sap)
         realm.display_line=False
         
-    @binding_trigger("^Following your command, .* releases a strangely smelling substance that seems into (\w+)'s pores. The (\w+) seed inside (?:her|him) suddenly erupts into life before withering away\.$")
+    @binding_trigger("^Following your command, .* releases a strangely smelling substance that seeps into (\w+)'s pores. The (\w+) seed inside (?:her|him) suddenly erupts into life before withering away\.$")
     def germinate(self, match, realm):
         person=match.group(1)
         seed = match.group(2)
